@@ -1,5 +1,10 @@
 package com.gelisam.failfast.generator
 
+import treehugger.forest._, definitions._, treehuggerDSL._
+import treehugger.forest._
+import definitions._
+import treehuggerDSL._
+
 import scala.xml._
 
 /**
@@ -36,4 +41,15 @@ object ScaladocParser {
    */
   def parseName(elem: Elem): String =
     elem.text
+  
+  /**
+   * Parse an XML name into a treehugger Ident.
+   * 
+   * {{{
+   * >>> ScaladocParser.parseIdent(<span class="name">foreach</span>)
+   * Ident(foreach)
+   * }}}
+   */
+  def parseIdent(elem: Elem): Ident =
+    Ident(parseName(elem))
 }
