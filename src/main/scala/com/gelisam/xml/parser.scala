@@ -22,6 +22,9 @@ class XmlTail(nodeSeqs: List[NodeSeq]) {
         ).toString
     }
   
+  def isEmpty: Boolean =
+    nodeSeqs.isEmpty
+  
   /**
    * The next node, if any.
    * None if pointing after the last child of a parent node.
@@ -36,6 +39,21 @@ class XmlTail(nodeSeqs: List[NodeSeq]) {
       nodeSeq <- nodeSeqs.headOption
       node <- nodeSeq.headOption
     } yield node
+  
+  /**
+   * The next node, if any, and the tail.
+   * None if pointing after the last child of a parent node.
+   * 
+   * {{{
+   * >>> XmlTail(<foo><bar/><baz/></foo>).unconsOption
+   * Some((<foo><bar/><baz/></foo>,<POINTER/>))
+   * }}}
+   */
+  def unconsOption: Option[(Node, XmlTail)] =
+    for {
+      nodeSeq <- nodeSeqs.headOption
+      node <- nodeSeq.headOption
+    } yield (node, new XmlTail(nodeSeq.tail :: nodeSeqs.tail))
   
   /**
    * Point before the first child of the next node, even if it doesn't have any children.
@@ -93,4 +111,38 @@ class XmlTail(nodeSeqs: List[NodeSeq]) {
 object XmlTail {
   def apply(nodeSeq: NodeSeq): XmlTail =
     new XmlTail(nodeSeq :: List())
+}
+
+
+class XmlParser[A](runXmlParser: XmlTail => Option[(A, XmlTail)]) {
+  def parsePartially(nodeSeq: NodeSeq): Option[(A, XmlTail)] =
+    runXmlParser(XmlTail(nodeSeq))
+  
+  def parseAll(nodeSeq: NodeSeq): Option[A] =
+    parsePartially(nodeSeq).flatMap {
+      case (a, t) if t.isEmpty => Some(a)
+      case _ => None
+    }
+}
+
+object XmlParser {
+  def success[A](a: A): XmlParser[A] =
+    new XmlParser(t => Some(a, t))
+  
+  def failure(): XmlParser[Nothing] =
+    new XmlParser(_ => None)
+  
+  /**
+   * Consume the next node.
+   * Fail if the node is not the one we expect.
+   * 
+   * {{{
+   * >>> XmlParser.elem(<foo/>).parsePartially(<foo/><bar/>.repr)
+   * Some((<foo/>,<POINTER/><bar/>))
+   * }}}
+   */
+  def elem(expected: Node): XmlParser[Node] =
+    new XmlParser(t => t.unconsOption filter {
+      case (node,_) => node == expected
+    })
 }
