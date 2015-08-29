@@ -3,12 +3,17 @@ package com.gelisam.xml
 import scala.xml._
 
 /**
- * An xml Elem in the middle of an XML file.
- * Includes the nodes which follow it, the nodes which follow its parent node, etc.
+ * Points in-between xml nodes in the middle of an XML file.
+ * Includes the nodes which follow the pointer, the nodes which follow the parent node, etc.
  * 
  * {{{
  * >>> XmlTail(<foo><bar/><baz/></foo>)
- * XmlTail(<foo><bar/><baz/></foo>,List())
+ * XmlTail(List(<foo><bar/><baz/></foo>))
  * }}}
  */
-case class XmlTail(elem: Elem, nextNodes: List[NodeSeq] = List())
+case class XmlTail(runXmlTail: List[NodeSeq])
+
+object XmlTail {
+  def apply(elem: Elem): XmlTail =
+    XmlTail(elem.repr :: List())
+}
