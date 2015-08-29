@@ -11,7 +11,7 @@ import scala.xml._
  * <POINTER/><foo><bar/><baz/></foo>
  * }}}
  */
-case class XmlTail(nodeSeqs: List[NodeSeq]) {
+class XmlTail(nodeSeqs: List[NodeSeq]) {
   override def toString: String =
     nodeSeqs match {
       case Nil =>
@@ -63,7 +63,7 @@ case class XmlTail(nodeSeqs: List[NodeSeq]) {
         case elem: Elem => Some(elem)
         case _ => None
       }
-    } yield XmlTail(NodeSeq.fromSeq(elem.child) :: nodeSeq.tail :: nodeSeqs.tail)
+    } yield new XmlTail(NodeSeq.fromSeq(elem.child) :: nodeSeq.tail :: nodeSeqs.tail)
   
   /**
    * Point after the parent node.
@@ -85,12 +85,12 @@ case class XmlTail(nodeSeqs: List[NodeSeq]) {
    */
   def upOption: Option[XmlTail] =
     nodeSeqs match {
-      case nodeSeq :: nodeSeqs if nodeSeq.isEmpty => Some(XmlTail(nodeSeqs))
+      case nodeSeq :: nodeSeqs if nodeSeq.isEmpty => Some(new XmlTail(nodeSeqs))
       case _ => None
     }
 }
 
 object XmlTail {
   def apply(nodeSeq: NodeSeq): XmlTail =
-    XmlTail(nodeSeq :: List())
+    new XmlTail(nodeSeq :: List())
 }
