@@ -166,6 +166,24 @@ class XmlParser[A](val runXmlParser: XmlTail => Option[(A, XmlTail)]) {
     )
   
   /**
+   * Fail unless the parsed value is accepted by the predicate.
+   * 
+   * {{{
+   * >>> XmlParser.node.map(_.text.toInt).filter(_ > 10).parsePartially(<number>42</number>)
+   * Some((42,<POINTER/>))
+   * 
+   * >>> XmlParser.node.map(_.text.toInt).filter(_ > 10).parsePartially(<number>2</number>)
+   * None
+   * }}}
+   */
+  def filter(p: A => Boolean): XmlParser[A] =
+    new XmlParser(t =>
+      runXmlParser(t) filter {
+        case (a, _) => p(a)
+      }
+    )
+  
+  /**
    * {{{
    * >>> XmlParser.node.map(_.text.toInt).parsePartially(<number>42</number>)
    * Some((42,<POINTER/>))
