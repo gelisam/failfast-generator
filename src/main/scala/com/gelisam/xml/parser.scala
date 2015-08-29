@@ -11,7 +11,22 @@ import scala.xml._
  * XmlTail(List(<foo><bar/><baz/></foo>))
  * }}}
  */
-case class XmlTail(runXmlTail: List[NodeSeq])
+case class XmlTail(nodeSeqs: List[NodeSeq]) {
+  /**
+   * The node immediately after the pointer, if any.
+   * None if pointing after the last child of a parent node.
+   * 
+   * {{{
+   * >>> XmlTail(<foo><bar/><baz/></foo>).headOption
+   * Some(<foo><bar/><baz/></foo>)
+   * }}}
+   */
+  def headOption: Option[Node] =
+    for {
+      nodeSeq <- nodeSeqs.headOption
+      node <- nodeSeq.headOption
+    } yield node
+}
 
 object XmlTail {
   def apply(nodeSeq: NodeSeq): XmlTail =
