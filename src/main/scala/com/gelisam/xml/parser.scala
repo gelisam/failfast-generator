@@ -114,7 +114,7 @@ object XmlTail {
 }
 
 
-class XmlParser[A](runXmlParser: XmlTail => Option[(A, XmlTail)]) {
+class XmlParser[A](val runXmlParser: XmlTail => Option[(A, XmlTail)]) {
   def parsePartially(nodeSeq: NodeSeq): Option[(A, XmlTail)] =
     runXmlParser(XmlTail(nodeSeq))
   
@@ -123,6 +123,27 @@ class XmlParser[A](runXmlParser: XmlTail => Option[(A, XmlTail)]) {
       case (a, t) if t.isEmpty => Some(a)
       case _ => None
     }
+  
+  /**
+   * Monadic composition.
+   * 
+   * {{{
+   * >>> (
+   * ...   for {
+   * ...     foo <- XmlParser.elem(<foo/>)
+   * ...     bar <- XmlParser.elem(<bar/>)
+   * ...   } yield (foo, bar)
+   * ... ).parsePartially(<foo/><bar/>)
+   * Some(((<foo/>,<bar/>),<POINTER/>))
+   * }}}
+   */
+  def flatMap[B](f: A => XmlParser[B]): XmlParser[B] =
+    new XmlParser(t =>
+      for {
+        (a, t) <- runXmlParser(t)
+        (b, t) <- f(a).runXmlParser(t)
+      } yield (b, t)
+    )
   
   /**
    * {{{
