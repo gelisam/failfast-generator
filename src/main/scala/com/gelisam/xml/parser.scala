@@ -139,6 +139,9 @@ object XmlParser {
    * {{{
    * >>> XmlParser.elem(<foo/>).parsePartially(<foo/><bar/>.repr)
    * Some((<foo/>,<POINTER/><bar/>))
+   * 
+   * >>> XmlParser.elem(<bar/>).parsePartially(<foo/><bar/>.repr)
+   * None
    * }}}
    */
   def elem(expected: Node): XmlParser[Node] =
