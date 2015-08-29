@@ -8,10 +8,20 @@ import scala.xml._
  * 
  * {{{
  * >>> XmlTail(<foo><bar/><baz/></foo>)
- * XmlTail(List(<foo><bar/><baz/></foo>))
+ * <POINTER/><foo><bar/><baz/></foo>
  * }}}
  */
 case class XmlTail(nodeSeqs: List[NodeSeq]) {
+  override def toString: String =
+    nodeSeqs match {
+      case Nil =>
+        <POINTER/>.toString
+      case nodeSeq :: nodeSeqs =>
+        nodeSeqs.foldLeft[NodeSeq](<POINTER/>.repr ++ nodeSeq)((xmlWithPointer, nodeSeq) =>
+          <parent>{xmlWithPointer}</parent>.repr ++ nodeSeq
+        ).toString
+    }
+  
   /**
    * The next node, if any.
    * None if pointing after the last child of a parent node.
@@ -34,11 +44,11 @@ case class XmlTail(nodeSeqs: List[NodeSeq]) {
    * {{{
    * // inside foo
    * >>> XmlTail(<foo><bar/><baz/></foo>).downOption
-   * Some(XmlTail(List(<bar/><baz/>, )))
+   * Some(<parent><POINTER/><bar/><baz/></parent>)
    * 
    * // inside bar
    * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.downOption)
-   * Some(XmlTail(List(, <baz/>, )))
+   * Some(<parent><parent><POINTER/></parent><baz/></parent>)
    * 
    * // nothing in which to go inside
    * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.downOption).flatMap(_.downOption)
@@ -62,7 +72,7 @@ case class XmlTail(nodeSeqs: List[NodeSeq]) {
    * {{{
    * // after bar
    * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.downOption).flatMap(_.upOption)
-   * Some(XmlTail(List(<baz/>, )))
+   * Some(<parent><POINTER/><baz/></parent>)
    * 
    * // nothing in which to go outside
    * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.upOption)
