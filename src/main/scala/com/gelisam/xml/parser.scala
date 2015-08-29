@@ -54,6 +54,30 @@ case class XmlTail(nodeSeqs: List[NodeSeq]) {
         case _ => None
       }
     } yield XmlTail(NodeSeq.fromSeq(elem.child) :: nodeSeq.tail :: nodeSeqs.tail)
+  
+  /**
+   * Point after the parent node.
+   * None unless pointing after the last child of a parent node.
+   * 
+   * {{{
+   * // after bar
+   * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.downOption).flatMap(_.upOption)
+   * Some(XmlTail(List(<baz/>, )))
+   * 
+   * // nothing in which to go outside
+   * >>> XmlTail(<foo><bar/><baz/></foo>).downOption.flatMap(_.upOption)
+   * None
+   * 
+   * // nothing in which to go outside
+   * >>> XmlTail(<foo><bar/><baz/></foo>).upOption
+   * None
+   * }}}
+   */
+  def upOption: Option[XmlTail] =
+    nodeSeqs match {
+      case nodeSeq :: nodeSeqs if nodeSeq.isEmpty => Some(XmlTail(nodeSeqs))
+      case _ => None
+    }
 }
 
 object XmlTail {
