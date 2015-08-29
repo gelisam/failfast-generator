@@ -152,6 +152,9 @@ class XmlParser[A](val runXmlParser: XmlTail => Option[(A, XmlTail)]) {
    * >>> import scala.util.Try
    * >>> XmlParser.node.optionMap(x => Try(x.text.toInt).toOption).parsePartially(<number>42</number>)
    * Some((42,<POINTER/>))
+   * 
+   * >>> XmlParser.node.optionMap(x => Try(x.text.toInt).toOption).parsePartially(<number>NaN</number>)
+   * None
    * }}}
    */
   def optionMap[B](f: A => Option[B]): XmlParser[B] =
