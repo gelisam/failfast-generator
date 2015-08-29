@@ -123,6 +123,19 @@ class XmlParser[A](runXmlParser: XmlTail => Option[(A, XmlTail)]) {
       case (a, t) if t.isEmpty => Some(a)
       case _ => None
     }
+  
+  /**
+   * {{{
+   * >>> XmlParser.node.map(_.text.toInt).parsePartially(<number>42</number>)
+   * Some((42,<POINTER/>))
+   * }}}
+   */
+  def map[B](f: A => B): XmlParser[B] =
+    new XmlParser(t =>
+      runXmlParser(t) map {
+        case (a, t) => (f(a), t)
+      }
+    )
 }
 
 object XmlParser {
@@ -131,6 +144,9 @@ object XmlParser {
   
   def failure(): XmlParser[Nothing] =
     new XmlParser(_ => None)
+  
+  def node(): XmlParser[Node] =
+    new XmlParser(_.unconsOption)
   
   /**
    * Consume the next node.
