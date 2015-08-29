@@ -17,8 +17,8 @@ class XmlTail(nodeSeqs: List[NodeSeq]) {
       case Nil =>
         <POINTER/>.toString
       case nodeSeq :: nodeSeqs =>
-        nodeSeqs.foldLeft[NodeSeq](<POINTER/>.repr ++ nodeSeq)((xmlWithPointer, nodeSeq) =>
-          <parent>{xmlWithPointer}</parent>.repr ++ nodeSeq
+        nodeSeqs.foldLeft[NodeSeq](<POINTER/> ++ nodeSeq)((xmlWithPointer, nodeSeq) =>
+          <parent>{xmlWithPointer}</parent> ++ nodeSeq
         ).toString
     }
   
@@ -153,10 +153,10 @@ object XmlParser {
    * Fail if the node is not the one we expect.
    * 
    * {{{
-   * >>> XmlParser.elem(<foo/>).parsePartially(<foo/><bar/>.repr)
+   * >>> XmlParser.elem(<foo/>).parsePartially(<foo/><bar/>)
    * Some((<foo/>,<POINTER/><bar/>))
    * 
-   * >>> XmlParser.elem(<bar/>).parsePartially(<foo/><bar/>.repr)
+   * >>> XmlParser.elem(<bar/>).parsePartially(<foo/><bar/>)
    * None
    * }}}
    */
