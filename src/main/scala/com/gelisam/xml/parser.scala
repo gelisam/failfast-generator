@@ -146,6 +146,23 @@ class XmlParser[A](val runXmlParser: XmlTail => Option[(A, XmlTail)]) {
     )
   
   /**
+   * Map to B, or fail trying.
+   * 
+   * {{{
+   * >>> import scala.util.Try
+   * >>> XmlParser.node.optionMap(x => Try(x.text.toInt).toOption).parsePartially(<number>42</number>)
+   * Some((42,<POINTER/>))
+   * }}}
+   */
+  def optionMap[B](f: A => Option[B]): XmlParser[B] =
+    new XmlParser(t =>
+      for {
+        (a, t) <- runXmlParser(t)
+        b <- f(a)
+      } yield (b, t)
+    )
+  
+  /**
    * {{{
    * >>> XmlParser.node.map(_.text.toInt).parsePartially(<number>42</number>)
    * Some((42,<POINTER/>))
