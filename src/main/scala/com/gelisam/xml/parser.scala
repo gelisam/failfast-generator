@@ -14,6 +14,6 @@ import scala.xml._
 case class XmlTail(runXmlTail: List[NodeSeq])
 
 object XmlTail {
-  def apply(elem: Elem): XmlTail =
-    XmlTail(elem.repr :: List())
+  def apply(nodeSeq: NodeSeq): XmlTail =
+    XmlTail(nodeSeq :: List())
 }
