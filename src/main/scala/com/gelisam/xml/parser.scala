@@ -217,28 +217,61 @@ trait XmlParsers extends Parsers {
     })
   
   /**
-   * An XML element and all of its children.
-   * 
-   * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
-   * ...   <group><foo/><bar/></group>
-   * ... ).get
-   * (<foo/>~<bar/>)
-   * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
-   * ...   <group><foo/> and <bar/></group>
-   * ... )
-   * [<undefined position>] failure: opening tag expected
-   * <BLANKLINE>
-   * <undefined position>
-   * }}}
+   * A helper for the variants of xmlElem, parent and parentFlatMap which
+   * accept any parent node.
    */
-  def xmlElem: Parser[XmlElem] =
+  private def open: Parser[XmlElem] =
     accept("opening tag", {
       case XmlOpen(elem) => elem
-    }).flatMap{openElem =>
+    })
+  
+  /**
+   * A helper for the variants of xmlElem, parent and parentFlatMap which
+   * require a parent node with a particular tag.
+   */
+  private def open(tag: String): Parser[XmlElem] =
+    open ^? (
+      {
+        case elem if elem.label == tag => elem
+      },
+      {elem =>
+        s"expected ${tag}, got ${elem.label}"
+      }
+    )
+  
+  /**
+   * A helper for the variants of xmlElem, parent and parentFlatMap which
+   * require a parent node with a particular tag and particular attributes.
+   */
+  private def open(expected: XmlElem): Parser[XmlElem] =
+    {
+      val expectedKeys = expected.attributes.map(_.key).toSet
+      expectedKeys.foldLeft(open(expected.label))((parser, key) =>
+        parser ^? (
+          {
+            case elem if elem \@ key == expected \@ key => elem
+          },
+          {_ =>
+            val expectedValue = expected \@ key
+            s"""expected attribute ${key}="${expectedValue}""""
+          }
+        )
+      ) ^? (
+        {
+          case elem if elem.attributes.map(_.key).sameElements(expectedKeys) => elem
+        },
+        {elem =>
+          val unexpectedAttributes = elem.attributes.map(_.key)
+          s"unexpected attribute ${unexpectedAttributes.head}"
+        }
+      )
+    }
+  
+  /**
+   * A helper for xmlElem, which accepts any children.
+   */
+  private def untilClose(openElem: XmlElem): Parser[XmlElem] =
+    {
       lazy val parseUntilCloseTag: Parser[XmlElem] =
         token.flatMap {
           case XmlClose(elem) if elem eq openElem => success(openElem)
@@ -248,7 +281,44 @@ trait XmlParsers extends Parsers {
     }
   
   /**
-   * An XML element with the given tag name.
+   * A helper for parent, which requires children to satisfy a particular parser.
+   */
+  private def untilClose[A](openElem: XmlElem, parser: Parser[A]): Parser[A] =
+    parser <~ accept("closing tag", {
+      case XmlClose(elem) if elem eq openElem => elem
+    })
+  
+  /**
+   * A helper for parentFlatMap, which decides how to parse children using
+   * monadic composition.
+   */
+  private def untilClose[A](openElem: XmlElem, f: XmlElem => Parser[A]): Parser[A] =
+    untilClose(openElem, f(openElem))
+  
+  /**
+   * An XML element with any tag name, any attributes, and any children.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * ...   <group><foo attr="ignored"/><bar/></group>
+   * ... ).get
+   * (<foo attr="ignored"/>~<bar/>)
+   * 
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * ...   <group><foo attr="ignored"/> and <bar/></group>
+   * ... )
+   * [<undefined position>] failure: opening tag expected
+   * <BLANKLINE>
+   * <undefined position>
+   * }}}
+   */
+  def xmlElem: Parser[XmlElem] =
+    open.flatMap(untilClose(_))
+  
+  /**
+   * An XML element with the given tag name, any attributes, and any children.
    * 
    * {{{
    * >>> XmlParsers.parseAll(
@@ -261,7 +331,7 @@ trait XmlParsers extends Parsers {
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
    * ...   <foo/><foo/>
    * ... )
-   * [<undefined position>] failure: expected <bar>...</bar>
+   * [<undefined position>] failure: expected bar, got foo
    * <BLANKLINE>
    * <undefined position>
    * }}}
@@ -270,16 +340,16 @@ trait XmlParsers extends Parsers {
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
    * ...   <bar/><bar/>
    * ... )
-   * [<undefined position>] failure: expected <foo>...</foo>
+   * [<undefined position>] failure: expected foo, got bar
    * <BLANKLINE>
    * <undefined position>
    * }}}
    */
   def xmlElem(tag: String): Parser[XmlElem] =
-    (xmlElem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
+    open(tag).flatMap(untilClose(_))
   
   /**
-   * An XML element with the same tag name and attributes as the expected element.
+   * An XML element with the given tag name, the given attributes, and any children.
    * 
    * {{{
    * >>> XmlParsers.parseAll(
@@ -306,31 +376,26 @@ trait XmlParsers extends Parsers {
    * <undefined position>
    */
   def xmlElem(expected: XmlElem): Parser[XmlElem] =
-    {
-      val expectedKeys = expected.attributes.map(_.key).toSet
-      expectedKeys.foldLeft(xmlElem(expected.label))((parser, key) =>
-        parser ^? (
-          {
-            case elem if elem \@ key == expected \@ key => elem
-          },
-          {_ =>
-            val expectedValue = expected \@ key
-            s"""expected attribute ${key}="${expectedValue}""""
-          }
-        )
-      ) ^? (
-        {
-          case elem if elem.attributes.map(_.key).sameElements(expectedKeys) => elem
-        },
-        {elem =>
-          val unexpectedAttributes = elem.attributes.map(_.key)
-          s"unexpected attribute ${unexpectedAttributes.head}"
-        }
-      )
-    }
+    open(expected).flatMap(untilClose(_))
   
   /**
-   * An XML element whose children match the given parser.
+   * An XML element, with any tag name and any attributes, whose children match
+   * the given parser.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parent(XmlParsers.text.map(_.toInt)),
+   * ...   <number>42</number>
+   * ... ).get
+   * 42
+   * }}}
+   */
+  def parent[A](parser: Parser[A]): Parser[A] =
+    open.flatMap(untilClose(_, parser))
+  
+  /**
+   * An XML element, with the given tag name and any attributes, whose children
+   * match the given parser.
    * 
    * {{{
    * >>> XmlParsers.parseAll(
@@ -341,20 +406,33 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parent[A](tag: String, parser: Parser[A]): Parser[A] =
-    for {
-      openElem <- accept("opening tag", {
-        case XmlOpen(elem) if elem.label == tag => elem
-      })
-      a <- parser
-      closeElem <- accept("closing tag", {
-        case XmlClose(elem) if elem eq openElem => elem
-      })
-    } yield a
+    open(tag).flatMap(untilClose(_, parser))
   
   /**
-   * An XML element with the given tag name, which can be examined as a DOM to
-   * determine how to parse its children. Useful when the contents of an element
-   * is described by its attributes.
+   * An XML element, with any tag name and any attributes, which can be examined
+   * as a DOM to determine how to parse its children. Useful when the contents
+   * of an element is described by its attributes.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parentFlatMap(elem =>
+   * ...     XmlParsers.repN(
+   * ...       (elem \@ "count").toInt,
+   * ...       XmlParsers.parent("entry", XmlParsers.text)
+   * ...     )
+   * ...   ),
+   * ...   <list count="2"><entry>hello</entry><entry>world</entry></list>
+   * ... ).get
+   * List(hello, world)
+   * }}}
+   */
+  def parentFlatMap[A](f: XmlElem => Parser[A]): Parser[A] =
+    open.flatMap(untilClose(_,f))
+  
+  /**
+   * An XML element, with the given tag name and any attributes, which can be
+   * examined as a DOM to determine how to parse its children. Useful when the
+   * contents of an element is described by its attributes.
    * 
    * {{{
    * >>> XmlParsers.parseAll(
@@ -370,15 +448,28 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parentFlatMap[A](tag: String)(f: XmlElem => Parser[A]): Parser[A] =
-    for {
-      openElem <- accept("opening tag", {
-        case XmlOpen(elem) if elem.label == tag => elem
-      })
-      a <- f(openElem)
-      closeElem <- accept("closing tag", {
-        case XmlClose(elem) if elem eq openElem => elem
-      })
-    } yield a
+    open(tag).flatMap(untilClose(_,f))
+  
+  /**
+   * An XML element, with the given tag name and attributes, which can be
+   * examined as a DOM to determine how to parse its children. Useful when the
+   * contents of an element is described by its attributes.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parentFlatMap(<list count="inline"/>) { elem =>
+   * ...     val count = (elem \ "count").text.toInt
+   * ...     val ignoredCount = XmlParsers.xmlElem("count").?
+   * ...     val entry = XmlParsers.parent("entry", XmlParsers.text)
+   * ...     ignoredCount ~> XmlParsers.repN(count, entry <~ ignoredCount)
+   * ...   },
+   * ...   <list count="inline"><entry>hello</entry><entry>world</entry><count>2</count></list>
+   * ... ).get
+   * List(hello, world)
+   * }}}
+   */
+  def parentFlatMap[A](expected: XmlElem)(f: XmlElem => Parser[A]): Parser[A] =
+    open(expected).flatMap(untilClose(_,f))
 }
 
 object XmlParsers extends XmlParsers
