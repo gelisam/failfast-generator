@@ -55,7 +55,7 @@ class XmlTokenReader(
   
   // helper for first and rest
   def nodeOption: Option[Node] =
-    nodeSeq.lift(index)
+    nodeSeq lift index
   
   def first: XmlToken =
     (nodeOption, cc) match {
@@ -72,7 +72,7 @@ class XmlTokenReader(
     (nodeOption, cc) match {
       case (Some(elem: Elem), cc) =>
         new XmlTokenReader(
-          NodeSeq.fromSeq(elem.child),
+          NodeSeq fromSeq (elem.child),
           0,
           Some((elem, new XmlTokenReader(nodeSeq, index + 1, cc)))
         )
@@ -87,7 +87,7 @@ class XmlTokenReader(
   
   // simplify debugging by listing all the remaining XmlTokens
   override def toString: String =
-    s"XmlTokenReader(${toList.mkString(",")})"
+    s"XmlTokenReader(${toList mkString ","})"
 }
 
 /**
@@ -245,7 +245,7 @@ trait XmlParsers extends Parsers {
    */
   private def open(expected: XmlElem): Parser[XmlElem] =
     {
-      val expectedKeys = expected.attributes.map(_.key).toSet
+      val expectedKeys = (expected.attributes map (_.key)).toSet
       expectedKeys.foldLeft(open(expected.label))((parser, key) =>
         parser ^? (
           {
@@ -258,10 +258,10 @@ trait XmlParsers extends Parsers {
         )
       ) ^? (
         {
-          case elem if elem.attributes.map(_.key).sameElements(expectedKeys) => elem
+          case elem if elem.attributes map (_.key) sameElements expectedKeys => elem
         },
         {elem =>
-          val unexpectedAttributes = elem.attributes.map(_.key)
+          val unexpectedAttributes = elem.attributes map (_.key)
           s"unexpected attribute ${unexpectedAttributes.head}"
         }
       )
@@ -273,7 +273,7 @@ trait XmlParsers extends Parsers {
   private def untilClose(openElem: XmlElem): Parser[XmlElem] =
     {
       lazy val parseUntilCloseTag: Parser[XmlElem] =
-        token.flatMap {
+        token flatMap {
           case XmlClose(elem) if elem eq openElem => success(openElem)
           case _ => parseUntilCloseTag
         }
@@ -315,7 +315,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def xmlElem: Parser[XmlElem] =
-    open.flatMap(untilClose(_))
+    open flatMap (untilClose(_))
   
   /**
    * An XML element with the given tag name, any attributes, and any children.
@@ -346,7 +346,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def xmlElem(tag: String): Parser[XmlElem] =
-    open(tag).flatMap(untilClose(_))
+    open(tag) flatMap (untilClose(_))
   
   /**
    * An XML element with the given tag name, the given attributes, and any children.
@@ -376,7 +376,7 @@ trait XmlParsers extends Parsers {
    * <undefined position>
    */
   def xmlElem(expected: XmlElem): Parser[XmlElem] =
-    open(expected).flatMap(untilClose(_))
+    open(expected) flatMap (untilClose(_))
   
   /**
    * An XML element, with any tag name and any attributes, whose children match
@@ -391,7 +391,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parent[A](parser: Parser[A]): Parser[A] =
-    open.flatMap(untilClose(_, parser))
+    open flatMap (untilClose(_, parser))
   
   /**
    * An XML element, with the given tag name and any attributes, whose children
@@ -406,7 +406,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parent[A](tag: String, parser: Parser[A]): Parser[A] =
-    open(tag).flatMap(untilClose(_, parser))
+    open(tag) flatMap (untilClose(_, parser))
   
   /**
    * An XML element, with any tag name and any attributes, which can be examined
@@ -427,7 +427,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parentFlatMap[A](f: XmlElem => Parser[A]): Parser[A] =
-    open.flatMap(untilClose(_,f))
+    open flatMap (untilClose(_,f))
   
   /**
    * An XML element, with the given tag name and any attributes, which can be
@@ -448,7 +448,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parentFlatMap[A](tag: String)(f: XmlElem => Parser[A]): Parser[A] =
-    open(tag).flatMap(untilClose(_,f))
+    open(tag) flatMap (untilClose(_,f))
   
   /**
    * An XML element, with the given tag name and attributes, which can be
@@ -469,7 +469,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parentFlatMap[A](expected: XmlElem)(f: XmlElem => Parser[A]): Parser[A] =
-    open(expected).flatMap(untilClose(_,f))
+    open(expected) flatMap (untilClose(_,f))
 }
 
 object XmlParsers extends XmlParsers
