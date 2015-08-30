@@ -189,7 +189,7 @@ trait XmlParsers extends Parsers {
    */
   def text: Parser[String] =
     accept("text node", {
-      case XmlNode(scala.xml.Text(s)) => s
+      case XmlNode(Text(s)) => s
     })
   
   /**
@@ -213,7 +213,7 @@ trait XmlParsers extends Parsers {
    */
   def text(expected: String): Parser[String] =
     accept(expected, {
-      case XmlNode(scala.xml.Text(s)) if s == expected => s
+      case XmlNode(Text(s)) if s == expected => s
     })
   
   /**
