@@ -253,9 +253,9 @@ trait XmlParsers extends Parsers {
    * {{{
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
-   * ...   <foo/><bar/>
+   * ...   <foo attr="ignored"/><bar/>
    * ... ).get
-   * (<foo/>~<bar/>)
+   * (<foo attr="ignored"/>~<bar/>)
    * 
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
@@ -277,6 +277,57 @@ trait XmlParsers extends Parsers {
    */
   def xmlElem(tag: String): Parser[XmlElem] =
     (xmlElem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
+  
+  /**
+   * An XML element with the same tag name and attributes as the expected element.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.xmlElem(<foo attr="matters"/>),
+   * ...   <foo attr="matters"/>
+   * ... ).get
+   * <foo attr="matters"/>
+   * }}}
+   * 
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.xmlElem(<foo attr="matters"/>),
+   * ...   <foo/>
+   * ... )
+   * [<undefined position>] failure: expected attribute attr="matters"
+   * <BLANKLINE>
+   * <undefined position>
+   * 
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.xmlElem(<foo/>),
+   * ...   <foo attr="matters"/><foo/>
+   * ... )
+   * [<undefined position>] failure: unexpected attribute attr
+   * <BLANKLINE>
+   * <undefined position>
+   */
+  def xmlElem(expected: XmlElem): Parser[XmlElem] =
+    {
+      val expectedKeys = expected.attributes.map(_.key).toSet
+      expectedKeys.foldLeft(xmlElem(expected.label))((parser, key) =>
+        parser ^? (
+          {
+            case elem if elem \@ key == expected \@ key => elem
+          },
+          {_ =>
+            val expectedValue = expected \@ key
+            s"""expected attribute ${key}="${expectedValue}""""
+          }
+        )
+      ) ^? (
+        {
+          case elem if elem.attributes.map(_.key).sameElements(expectedKeys) => elem
+        },
+        {elem =>
+          val unexpectedAttributes = elem.attributes.map(_.key)
+          s"unexpected attribute ${unexpectedAttributes.head}"
+        }
+      )
+    }
   
   /**
    * An XML element whose children match the given parser.
