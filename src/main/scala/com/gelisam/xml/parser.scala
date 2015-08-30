@@ -470,6 +470,20 @@ trait XmlParsers extends Parsers {
    */
   def parentFlatMap[A](expected: XmlElem)(f: XmlElem => Parser[A]): Parser[A] =
     open(expected) flatMap (untilClose(_,f))
+  
+  /**
+   * This exact sequence of XML nodes, as is.
+   * 
+   * {{{
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.nodeSeq(<group><foo/>hello<bar/></group>),
+   * ...   <group><foo/>hello<bar/></group>
+   * ... ).get
+   * <group><foo/>hello<bar/></group>
+   * }}}
+   */
+  def nodeSeq(nodeSeq: NodeSeq): Parser[NodeSeq] =
+    new XmlTokenReader(nodeSeq).toList.map(elem(_)).foldLeft(success(nodeSeq))(_ <~ _)
 }
 
 object XmlParsers extends XmlParsers
