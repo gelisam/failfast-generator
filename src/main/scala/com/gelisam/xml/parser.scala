@@ -106,7 +106,7 @@ class XmlTokenReader(
  * [<undefined position>] parsed: 42
  * }}}
  */
-object XmlParsers extends Parsers {
+trait XmlParsers extends Parsers {
   type Elem = XmlToken
   
   /**
@@ -313,3 +313,5 @@ object XmlParsers extends Parsers {
       })
     } yield a
 }
+
+object XmlParsers extends XmlParsers

@@ -1,5 +1,7 @@
 package com.gelisam.failfast.generator
 
+import com.gelisam.xml.parser._
+
 import treehugger.forest._, definitions._, treehuggerDSL._
 import treehugger.forest._
 import definitions._
@@ -10,7 +12,7 @@ import scala.xml._
 /**
  * Parses an html file into a list of method signatures.
  */
-object ScaladocParser {
+object ScaladocParser extends XmlParsers {
   val root = XML.loadFile("www.scala-lang.org/api/2.11.7/scala/collection/mutable/HashSet.html")
   val foreachNode = (root \\ "li").filter(_ \@ "name" == "scala.collection.mutable.HashSet#foreach")(0)
   
@@ -39,7 +41,7 @@ object ScaladocParser {
    * foreach
    * }}}
    */
-  def parseName(elem: Elem): String =
+  def parseName(elem: scala.xml.Elem): String =
     elem.text
   
   /**
@@ -50,6 +52,6 @@ object ScaladocParser {
    * Ident(foreach)
    * }}}
    */
-  def parseIdent(elem: Elem): Ident =
+  def parseIdent(elem: scala.xml.Elem): Ident =
     Ident(parseName(elem))
 }
