@@ -35,6 +35,26 @@ object ScaladocParser extends XmlParsers {
   val signatureNode = (foreachNode \ "h4").filter(_ \@ "class" == "signature")
   
   /**
+   * The keyword "def", with or without modifiers.
+   * 
+   * {{{
+   * >>> ScaladocParser.parseAll(
+   * ...   ScaladocParser.defKeyword,
+   * ...   <span class="modifier_kind">
+   * ...     <span class="modifier"/>
+   * ...     <span class="kind">def</span>
+   * ...   </span>
+   * ... ).get
+   * ()
+   * }}}
+   */
+  def defKeyword: Parser[Unit] =
+    xmlElem("span").filter(elem =>
+      elem \@ "class" == "modifier_kind" &&
+      (elem \ "span").filter(_ \@ "class" == "kind").text == "def"
+    ).map(_ => ())
+  
+  /**
    * Parse an XML name into a treehugger Ident.
    * 
    * {{{
