@@ -103,8 +103,8 @@ class XmlTokenReader(
  * suitable for streaming.
  * 
  * {{{
- * >>> XmlParsers.parsePrefix(XmlParsers.success(42), <foo/>)
- * [<undefined position>] parsed: 42
+ * >>> XmlParsers.parsePrefix(XmlParsers.success(42), <foo/>).get
+ * 42
  * }}}
  */
 trait XmlParsers extends Parsers {
@@ -117,8 +117,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parsePrefix(
    * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
    * ...   <foo/><bar/>
-   * ... )
-   * [<undefined position>] parsed: (<foo/>~<bar/>)
+   * ... ).get
+   * (<foo/>~<bar/>)
    * }}}
    */
   def parsePrefix[A](parser: Parser[A], nodeSeq: NodeSeq): ParseResult[A] =
@@ -139,8 +139,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
    * ...   <text>hello</text>
-   * ... )
-   * [<undefined position>] parsed: ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
+   * ... ).get
+   * ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
    * }}}
    */
   def parseAll[A](parser: Parser[A], nodeSeq: NodeSeq): ParseResult[A] =
@@ -153,8 +153,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parsePrefix(
    * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
    * ...   <text>hello</text>
-   * ... )
-   * [<undefined position>] parsed: ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
+   * ... ).get
+   * ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
    * 
    * >>> XmlParsers.parsePrefix(
    * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
@@ -175,8 +175,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.token ~> XmlParsers.text <~ XmlParsers.token,
    * ...   <text>hello</text>
-   * ... )
-   * [<undefined position>] parsed: hello
+   * ... ).get
+   * hello
    * 
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.token ~> XmlParsers.text <~ XmlParsers.token,
@@ -199,8 +199,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.token ~> XmlParsers.text("hello") <~ XmlParsers.token,
    * ...   <text>hello</text>
-   * ... )
-   * [<undefined position>] parsed: hello
+   * ... ).get
+   * hello
    * 
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.token ~> XmlParsers.text("hello") <~ XmlParsers.token,
@@ -223,8 +223,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
    * ...   <foo/><bar/>
-   * ... )
-   * [<undefined position>] parsed: (<foo/>~<bar/>)
+   * ... ).get
+   * (<foo/>~<bar/>)
    * }}}
    */
   def xmlElem: Parser[XmlElem] =
@@ -248,8 +248,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
    * ...   <foo/><bar/>
-   * ... )
-   * [<undefined position>] parsed: (<foo/>~<bar/>)
+   * ... ).get
+   * (<foo/>~<bar/>)
    * 
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
@@ -270,8 +270,8 @@ trait XmlParsers extends Parsers {
    * >>> XmlParsers.parseAll(
    * ...   XmlParsers.parent("number", XmlParsers.text.map(_.toInt)),
    * ...   <number>42</number>
-   * ... )
-   * [<undefined position>] parsed: 42
+   * ... ).get
+   * 42
    * }}}
    */
   def parent[A](tag: String, parser: Parser[A]): Parser[A] =
@@ -299,8 +299,8 @@ trait XmlParsers extends Parsers {
    * ...     )
    * ...   ),
    * ...   <list count="2"><entry>hello</entry><entry>world</entry></list>
-   * ... )
-   * [<undefined position>] parsed: List(hello, world)
+   * ... ).get
+   * List(hello, world)
    * }}}
    */
   def parentFlatMap[A](tag: String)(f: XmlElem => Parser[A]): Parser[A] =
