@@ -115,7 +115,7 @@ trait XmlParsers extends Parsers {
    * 
    * {{{
    * >>> XmlParsers.parsePrefix(
-   * ...   XmlParsers.elem ~ XmlParsers.elem,
+   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
    * ...   <foo/><bar/>
    * ... )
    * [<undefined position>] parsed: (<foo/>~<bar/>)
@@ -221,13 +221,13 @@ trait XmlParsers extends Parsers {
    * 
    * {{{
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.elem ~ XmlParsers.elem,
+   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
    * ...   <foo/><bar/>
    * ... )
    * [<undefined position>] parsed: (<foo/>~<bar/>)
    * }}}
    */
-  def elem: Parser[XmlElem] =
+  def xmlElem: Parser[XmlElem] =
     for {
       openElem <- accept("opening tag", {
         case XmlOpen(elem) => elem
@@ -246,13 +246,13 @@ trait XmlParsers extends Parsers {
    * 
    * {{{
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.elem("foo") ~ XmlParsers.elem("bar"),
+   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
    * ...   <foo/><bar/>
    * ... )
    * [<undefined position>] parsed: (<foo/>~<bar/>)
    * 
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.elem("foo") ~ XmlParsers.elem("bar"),
+   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
    * ...   <foo/><foo/>
    * ... )
    * [<undefined position>] failure: expected <bar>...</bar>
@@ -260,8 +260,8 @@ trait XmlParsers extends Parsers {
    * <undefined position>
    * }}}
    */
-  def elem(tag: String): Parser[XmlElem] =
-    (elem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
+  def xmlElem(tag: String): Parser[XmlElem] =
+    (xmlElem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
   
   /**
    * An XML element whose children match the given parser.
