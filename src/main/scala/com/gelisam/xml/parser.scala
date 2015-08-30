@@ -12,11 +12,11 @@ import scala.xml.{Elem => XmlElem}
  * in an XmlNode token.
  * 
  * {{{
- * >>> val foo = <foo attribute="ignored"/>
+ * >>> val foo = <foo attr="ignored"/>
  * >>> val bar = <bar/>
  * >>> val both = <group>{foo} and {bar}</group>
  * >>> both
- * <group><foo attribute="ignored"/> and <bar/></group>
+ * <group><foo attr="ignored"/> and <bar/></group>
  * 
  * // would be streamed as:
  * >>> List(
@@ -28,7 +28,7 @@ import scala.xml.{Elem => XmlElem}
  * ...     XmlClose(bar),
  * ...   XmlClose(both)
  * ... )
- * List(XmlOpen(<group><foo attribute="ignored"/> and <bar/></group>), XmlOpen(<foo attribute="ignored"/>), XmlClose(<foo attribute="ignored"/>), XmlNode( and ), XmlOpen(<bar/>), XmlClose(<bar/>), XmlClose(<group><foo attribute="ignored"/> and <bar/></group>))
+ * List(XmlOpen(<group><foo attr="ignored"/> and <bar/></group>), XmlOpen(<foo attr="ignored"/>), XmlClose(<foo attr="ignored"/>), XmlNode( and ), XmlOpen(<bar/>), XmlClose(<bar/>), XmlClose(<group><foo attr="ignored"/> and <bar/></group>))
  * }}}
  */
 sealed trait XmlToken
@@ -40,8 +40,8 @@ case class XmlClose(elem: Elem) extends XmlToken
  * Convert a NodeSeq into a stream of XmlTokens.
  * 
  * {{{
- * >>> new XmlTokenReader(<group><foo attribute="ignored"/> and <bar/></group>)
- * XmlTokenReader(XmlOpen(<group><foo attribute="ignored"/> and <bar/></group>),XmlOpen(<foo attribute="ignored"/>),XmlClose(<foo attribute="ignored"/>),XmlNode( and ),XmlOpen(<bar/>),XmlClose(<bar/>),XmlClose(<group><foo attribute="ignored"/> and <bar/></group>))
+ * >>> new XmlTokenReader(<group><foo attr="ignored"/> and <bar/></group>)
+ * XmlTokenReader(XmlOpen(<group><foo attr="ignored"/> and <bar/></group>),XmlOpen(<foo attr="ignored"/>),XmlClose(<foo attr="ignored"/>),XmlNode( and ),XmlOpen(<bar/>),XmlClose(<bar/>),XmlClose(<group><foo attr="ignored"/> and <bar/></group>))
  * }}}
  */
 class XmlTokenReader(
