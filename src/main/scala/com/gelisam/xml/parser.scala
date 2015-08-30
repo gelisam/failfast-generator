@@ -265,6 +265,15 @@ trait XmlParsers extends Parsers {
    * <BLANKLINE>
    * <undefined position>
    * }}}
+   * 
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
+   * ...   <bar/><bar/>
+   * ... )
+   * [<undefined position>] failure: expected <foo>...</foo>
+   * <BLANKLINE>
+   * <undefined position>
+   * }}}
    */
   def xmlElem(tag: String): Parser[XmlElem] =
     (xmlElem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
