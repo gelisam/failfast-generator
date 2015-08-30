@@ -35,24 +35,16 @@ object ScaladocParser extends XmlParsers {
   val signatureNode = (foreachNode \ "h4").filter(_ \@ "class" == "signature")
   
   /**
-   * Parse an XML name into a String.
-   * 
-   * {{{
-   * >>> ScaladocParser.parseName(<span class="name">foreach</span>)
-   * foreach
-   * }}}
-   */
-  def parseName(elem: XmlElem): String =
-    elem.text
-  
-  /**
    * Parse an XML name into a treehugger Ident.
    * 
    * {{{
-   * >>> ScaladocParser.parseIdent(<span class="name">foreach</span>)
+   * >>> ScaladocParser.parseAll(
+   * ...   ScaladocParser.ident,
+   * ...   <span class="name">foreach</span>
+   * ... ).get
    * Ident(foreach)
    * }}}
    */
-  def parseIdent(elem: XmlElem): Ident =
-    Ident(parseName(elem))
+  def ident: Parser[Ident] =
+    xmlElem("span").filter(_ \@ "class" == "name").map(x => Ident(x.text))
 }
