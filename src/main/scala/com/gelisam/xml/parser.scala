@@ -129,18 +129,18 @@ trait XmlParsers extends Parsers {
    * 
    * {{{
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~ XmlParsers.token,
-   * ...   <text>hello</text>
+   * ...   XmlParsers.xmlElem,
+   * ...   <foo/><bar/>
    * ... )
    * [<undefined position>] failure: end of input expected
    * <BLANKLINE>
    * <undefined position>
    * 
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
-   * ...   <text>hello</text>
+   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
+   * ...   <foo/><bar/>
    * ... ).get
-   * ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
+   * (<foo/>~<bar/>)
    * }}}
    */
   def parseAll[A](parser: Parser[A], nodeSeq: NodeSeq): ParseResult[A] =
@@ -221,25 +221,31 @@ trait XmlParsers extends Parsers {
    * 
    * {{{
    * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
-   * ...   <foo/><bar/>
+   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * ...   <group><foo/><bar/></group>
    * ... ).get
    * (<foo/>~<bar/>)
+   * 
+   * >>> XmlParsers.parseAll(
+   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * ...   <group><foo/> and <bar/></group>
+   * ... )
+   * [<undefined position>] failure: opening tag expected
+   * <BLANKLINE>
+   * <undefined position>
    * }}}
    */
   def xmlElem: Parser[XmlElem] =
-    for {
-      openElem <- accept("opening tag", {
-        case XmlOpen(elem) => elem
-      })
-      _ <- token.filter {
-        case XmlClose(elem) if elem eq openElem => false
-        case _ => true
-      }.*
-      closeElem <- accept("closing tag", {
-        case XmlClose(elem) if elem eq openElem => elem
-      })
-    } yield openElem
+    accept("opening tag", {
+      case XmlOpen(elem) => elem
+    }).flatMap{openElem =>
+      lazy val parseUntilCloseTag: Parser[XmlElem] =
+        token.flatMap {
+          case XmlClose(elem) if elem eq openElem => success(openElem)
+          case _ => parseUntilCloseTag
+        }
+      parseUntilCloseTag
+    }
   
   /**
    * An XML element with the given tag name.
