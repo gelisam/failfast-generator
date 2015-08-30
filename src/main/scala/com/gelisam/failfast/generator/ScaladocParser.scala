@@ -8,6 +8,7 @@ import definitions._
 import treehuggerDSL._
 
 import scala.xml._
+import scala.xml.{Elem => XmlElem}
 
 /**
  * Parses an html file into a list of method signatures.
@@ -41,7 +42,7 @@ object ScaladocParser extends XmlParsers {
    * foreach
    * }}}
    */
-  def parseName(elem: scala.xml.Elem): String =
+  def parseName(elem: XmlElem): String =
     elem.text
   
   /**
@@ -52,6 +53,6 @@ object ScaladocParser extends XmlParsers {
    * Ident(foreach)
    * }}}
    */
-  def parseIdent(elem: scala.xml.Elem): Ident =
+  def parseIdent(elem: XmlElem): Ident =
     Ident(parseName(elem))
 }

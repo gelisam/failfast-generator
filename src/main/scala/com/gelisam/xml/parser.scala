@@ -3,6 +3,7 @@ package com.gelisam.xml.parser
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
 import scala.xml._
+import scala.xml.{Elem => XmlElem}
 
 /**
  * An XML tree can be converted into a stream of XmlTokens by surrounding the
@@ -226,7 +227,7 @@ trait XmlParsers extends Parsers {
    * [<undefined position>] parsed: (<foo/>~<bar/>)
    * }}}
    */
-  def elem: Parser[scala.xml.Elem] =
+  def elem: Parser[XmlElem] =
     for {
       openElem <- accept("opening tag", {
         case XmlOpen(elem) => elem
@@ -259,7 +260,7 @@ trait XmlParsers extends Parsers {
    * <undefined position>
    * }}}
    */
-  def elem(tag: String): Parser[scala.xml.Elem] =
+  def elem(tag: String): Parser[XmlElem] =
     (elem.filter(_.label == tag)).withFailureMessage(s"expected <${tag}>...</${tag}>")
   
   /**
@@ -302,7 +303,7 @@ trait XmlParsers extends Parsers {
    * [<undefined position>] parsed: List(hello, world)
    * }}}
    */
-  def parentFlatMap[A](tag: String)(f: scala.xml.Elem => Parser[A]): Parser[A] =
+  def parentFlatMap[A](tag: String)(f: XmlElem => Parser[A]): Parser[A] =
     for {
       openElem <- accept("opening tag", {
         case XmlOpen(elem) if elem.label == tag => elem
