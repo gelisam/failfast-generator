@@ -103,7 +103,8 @@ class XmlTokenReader(
  * suitable for streaming.
  * 
  * {{{
- * >>> XmlParsers.parsePrefix(XmlParsers.success(42), <foo/>).get
+ * >>> import XmlParsers._
+ * >>> parsePrefix(success(42), <foo/>).get
  * 42
  * }}}
  */
@@ -114,8 +115,9 @@ trait XmlParsers extends Parsers {
    * Succeeds if the parser matches the beginning of the input. Useful for debugging.
    * 
    * {{{
-   * >>> XmlParsers.parsePrefix(
-   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
+   * >>> import XmlParsers._
+   * >>> parsePrefix(
+   * ...   xmlElem ~ xmlElem,
    * ...   <foo/><bar/>
    * ... ).get
    * (<foo/>~<bar/>)
@@ -128,16 +130,17 @@ trait XmlParsers extends Parsers {
    * Succeeds if the parser matches the entire input.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem,
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   xmlElem,
    * ...   <foo/><bar/>
    * ... )
    * [<undefined position>] failure: end of input expected
    * <BLANKLINE>
    * <undefined position>
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem ~ XmlParsers.xmlElem,
+   * >>> parseAll(
+   * ...   xmlElem ~ xmlElem,
    * ...   <foo/><bar/>
    * ... ).get
    * (<foo/>~<bar/>)
@@ -150,14 +153,15 @@ trait XmlParsers extends Parsers {
    * The next token, if there is one.
    * 
    * {{{
-   * >>> XmlParsers.parsePrefix(
-   * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
+   * >>> import XmlParsers._
+   * >>> parsePrefix(
+   * ...   token ~ token ~ token,
    * ...   <text>hello</text>
    * ... ).get
    * ((XmlOpen(<text>hello</text>)~XmlNode(hello))~XmlClose(<text>hello</text>))
    * 
-   * >>> XmlParsers.parsePrefix(
-   * ...   XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token ~ XmlParsers.token,
+   * >>> parsePrefix(
+   * ...   token ~ token ~ token ~ token,
    * ...   <text>hello</text>
    * ... )
    * [<undefined position>] failure: end of input
@@ -172,14 +176,15 @@ trait XmlParsers extends Parsers {
    * A text node, typically between other XML elements.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~> XmlParsers.text <~ XmlParsers.token,
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   token ~> text <~ token,
    * ...   <text>hello</text>
    * ... ).get
    * hello
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~> XmlParsers.text <~ XmlParsers.token,
+   * >>> parseAll(
+   * ...   token ~> text <~ token,
    * ...   <text><hello/></text>
    * ... )
    * [<undefined position>] failure: text node expected
@@ -196,14 +201,15 @@ trait XmlParsers extends Parsers {
    * A text node with the expected text.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~> XmlParsers.text("hello") <~ XmlParsers.token,
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   token ~> text("hello") <~ token,
    * ...   <text>hello</text>
    * ... ).get
    * hello
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.token ~> XmlParsers.text("hello") <~ XmlParsers.token,
+   * >>> parseAll(
+   * ...   token ~> text("hello") <~ token,
    * ...   <text>goodbye</text>
    * ... )
    * [<undefined position>] failure: hello expected
@@ -299,14 +305,15 @@ trait XmlParsers extends Parsers {
    * An XML element with any tag name, any attributes, and any children.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parent("group", xmlElem ~ xmlElem),
    * ...   <group><foo attr="ignored"/><bar/></group>
    * ... ).get
    * (<foo attr="ignored"/>~<bar/>)
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent("group", XmlParsers.xmlElem ~ XmlParsers.xmlElem),
+   * >>> parseAll(
+   * ...   parent("group", xmlElem ~ xmlElem),
    * ...   <group><foo attr="ignored"/> and <bar/></group>
    * ... )
    * [<undefined position>] failure: opening tag expected
@@ -321,14 +328,15 @@ trait XmlParsers extends Parsers {
    * An XML element with the given tag name, any attributes, and any children.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   xmlElem("foo") ~ xmlElem("bar"),
    * ...   <foo attr="ignored"/><bar/>
    * ... ).get
    * (<foo attr="ignored"/>~<bar/>)
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
+   * >>> parseAll(
+   * ...   xmlElem("foo") ~ xmlElem("bar"),
    * ...   <foo/><foo/>
    * ... )
    * [<undefined position>] failure: expected bar, got foo
@@ -336,8 +344,8 @@ trait XmlParsers extends Parsers {
    * <undefined position>
    * }}}
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem("foo") ~ XmlParsers.xmlElem("bar"),
+   * >>> parseAll(
+   * ...   xmlElem("foo") ~ xmlElem("bar"),
    * ...   <bar/><bar/>
    * ... )
    * [<undefined position>] failure: expected foo, got bar
@@ -352,23 +360,24 @@ trait XmlParsers extends Parsers {
    * An XML element with the given tag name, the given attributes, and any children.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem(<foo attr="matters"/>),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   xmlElem(<foo attr="matters"/>),
    * ...   <foo attr="matters"/>
    * ... ).get
    * <foo attr="matters"/>
    * }}}
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem(<foo attr="matters"/>),
+   * >>> parseAll(
+   * ...   xmlElem(<foo attr="matters"/>),
    * ...   <foo/>
    * ... )
    * [<undefined position>] failure: expected attribute attr="matters"
    * <BLANKLINE>
    * <undefined position>
    * 
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.xmlElem(<foo/>),
+   * >>> parseAll(
+   * ...   xmlElem(<foo/>),
    * ...   <foo attr="matters"/><foo/>
    * ... )
    * [<undefined position>] failure: unexpected attribute attr
@@ -383,8 +392,9 @@ trait XmlParsers extends Parsers {
    * the given parser.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent(XmlParsers.text.map(_.toInt)),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parent(text.map(_.toInt)),
    * ...   <number>42</number>
    * ... ).get
    * 42
@@ -398,8 +408,9 @@ trait XmlParsers extends Parsers {
    * match the given parser.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parent("number", XmlParsers.text.map(_.toInt)),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parent("number", text.map(_.toInt)),
    * ...   <number>42</number>
    * ... ).get
    * 42
@@ -414,11 +425,12 @@ trait XmlParsers extends Parsers {
    * of an element is described by its attributes.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parentFlatMap(elem =>
-   * ...     XmlParsers.repN(
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parentFlatMap(elem =>
+   * ...     repN(
    * ...       (elem \@ "count").toInt,
-   * ...       XmlParsers.parent("entry", XmlParsers.text)
+   * ...       parent("entry", text)
    * ...     )
    * ...   ),
    * ...   <list count="2"><entry>hello</entry><entry>world</entry></list>
@@ -435,11 +447,12 @@ trait XmlParsers extends Parsers {
    * contents of an element is described by its attributes.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parentFlatMap("list")(elem =>
-   * ...     XmlParsers.repN(
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parentFlatMap("list")(elem =>
+   * ...     repN(
    * ...       (elem \@ "count").toInt,
-   * ...       XmlParsers.parent("entry", XmlParsers.text)
+   * ...       parent("entry", text)
    * ...     )
    * ...   ),
    * ...   <list count="2"><entry>hello</entry><entry>world</entry></list>
@@ -456,12 +469,13 @@ trait XmlParsers extends Parsers {
    * contents of an element is described by its attributes.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.parentFlatMap(<list count="inline"/>) { elem =>
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   parentFlatMap(<list count="inline"/>) { elem =>
    * ...     val count = (elem \ "count").text.toInt
-   * ...     val ignoredCount = XmlParsers.xmlElem("count").?
-   * ...     val entry = XmlParsers.parent("entry", XmlParsers.text)
-   * ...     ignoredCount ~> XmlParsers.repN(count, entry <~ ignoredCount)
+   * ...     val ignoredCount = xmlElem("count").?
+   * ...     val entry = parent("entry", text)
+   * ...     ignoredCount ~> repN(count, entry <~ ignoredCount)
    * ...   },
    * ...   <list count="inline"><entry>hello</entry><entry>world</entry><count>2</count></list>
    * ... ).get
@@ -475,8 +489,9 @@ trait XmlParsers extends Parsers {
    * This exact sequence of XML nodes, as is.
    * 
    * {{{
-   * >>> XmlParsers.parseAll(
-   * ...   XmlParsers.nodeSeq(<group><foo/>hello<bar/></group>),
+   * >>> import XmlParsers._
+   * >>> parseAll(
+   * ...   nodeSeq(<group><foo/>hello<bar/></group>),
    * ...   <group><foo/>hello<bar/></group>
    * ... ).get
    * <group><foo/>hello<bar/></group>
