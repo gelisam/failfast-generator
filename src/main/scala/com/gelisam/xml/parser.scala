@@ -495,6 +495,14 @@ trait XmlParsers extends Parsers {
    * ...   <group><foo/>hello<bar/></group>
    * ... ).get
    * <group><foo/>hello<bar/></group>
+   * 
+   * >>> parseAll(
+   * ...   nodeSeq(<foo/>),
+   * ...   <bar/>
+   * ... )
+   * [<undefined position>] failure: `XmlOpen(<foo/>)' expected but XmlOpen(<bar/>) found
+   * <BLANKLINE>
+   * <undefined position>
    * }}}
    */
   def nodeSeq(nodeSeq: NodeSeq): Parser[NodeSeq] =
