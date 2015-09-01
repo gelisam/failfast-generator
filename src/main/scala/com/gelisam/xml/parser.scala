@@ -578,7 +578,7 @@ object XmlParsers extends XmlParsers
  * 1. We can't compose the rigid parsers until we know which of them won't be
  *    replaced by malleable parsers.
  * 2. This in turn prevents us from composing the malleable parsers, because
- *    there might be a rigid-until-further-notice parser in between them.
+ *    there might be a rigid-until-further-notice leaf parser in between them.
  * 3. The order in which the parser names appear in the XML might differ from
  *    the order in which the parser names are replaced. We would like to return
  *    the tuple of results in the latter order.
@@ -597,16 +597,18 @@ object XmlParsers extends XmlParsers
 // data Term a where
 //   Nil :: Term ()
 //   Map :: (b -> c) -> Term b -> Term c
-//   RigidCons :: String -> Parser () -> Term c -> Term c
+//   LeafCons :: String -> Parser () -> Term c -> Term c
+//   RigidCons :: Parser () -> Term c -> Term c
 //   MalleableCons :: Parser b -> Term c -> Term (b, c)
 // 
 // parseAs :: String -> Parser a -> Term b -> Term (a, b)
 // parseAs _   _      Nil                 = error "key not found"
 // parseAs key parser (Map f t)           = Map (\(x, y) -> (x, f y))
 //                                        $ parseAs key parser t
-// parseAs key parser (RigidCons s p t)
+// parseAs key parser (LeafCons s p t)
 //                            | s == key  = MalleableCons parser t
-//                            | otherwise = RigidCons s p (parseAs key parser t)
+//                            | otherwise = LeafCons s p (parseAs key parser t)
+// parseAs key parser (RigidCons p t)     = RigidCons s p (parseAs key parser t)
 // parseAs key parser (MalleableCons p t) = Map (\(y, (x, z)) -> (x, (y, z)))
 //                                        $ MalleableCons p (parseAs key parser t)
 
@@ -644,17 +646,32 @@ protected case class Map[A,B](
     inner.parser.map(f)
 }
 
-protected case class RigidCons[A](
-  head: String,
+// A rigid-until-further-notice leaf parser, such as <leaf/>.
+protected case class LeafCons[A](
+  headKey: String,
+  headParser: XmlParsers.Parser[Unit],
   tail: Term[A]
 ) extends Term[A] {
   def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
-    if (head == key) MalleableCons(parser, tail)
-    else RigidCons(key, tail.parseAs(key, parser))
+    if (headKey == key) MalleableCons(parser, tail)
+    else LeafCons(headKey, headParser, tail.parseAs(key, parser))
   
   def parser: Parser[A] = ???
 }
 
+// A definitely-rigid parser, such as <foo value="bar"/>.
+protected case class RigidCons[A](
+  headParser: XmlParsers.Parser[Unit],
+  tail: Term[A]
+) extends Term[A] {
+  def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
+    RigidCons(headParser, tail.parseAs(key, parser))
+  
+  def parser: Parser[A] = ???
+}
+
+// A leaf which has been replaced by a malleable parser, such as <int/> after
+// a parseAs("int", intParser).
 protected case class MalleableCons[A,B](
   head: XmlParsers.Parser[A],
   tail: Term[B]
