@@ -507,222 +507,222 @@ trait XmlParsers extends Parsers {
    */
   def nodeSeq(nodeSeq: NodeSeq): Parser[NodeSeq] =
     new XmlTokenReader(nodeSeq).toList.map(elem(_)).foldLeft(success(nodeSeq))(_ <~ _)
+  
+  /**
+   * Now for the complicated part.
+   * 
+   * Scala has a built-in syntax for describing a rigid block of XML surrounding
+   * more malleable pieces of data:
+   * 
+   * {{{
+   * >>> import XmlParsers._
+   * >>> val myInt = 42
+   * >>> val myFloat = 1.5
+   * >>> <group><i>{myInt}</i><f>{myFloat}</f></group>
+   * <group><i>42</i><f>1.5</f></group>
+   * }}}
+   * 
+   * I wish I could use that same syntax for describing a parser expecting that
+   * same rigid block of XML, surrounding more malleable pieces described by
+   * sub-parsers.
+   * 
+   * {{{
+   * >>> val intParser: Parser[Int] = text.map(_.toInt)
+   * ... val floatParser: Parser[Float] = text.map(_.toFloat)
+   * 
+   * ... val groupParser: Parser[Float] =
+   * ...   XmlTemplate(
+   * ...     <group><i>{intParser}</i><f>{floatParser}</f></group>
+   * ...   ) map {
+   * ...     case (i, f) => i + f
+   * ...   }
+   * ... parseAll(
+   * ...   groupParser,
+   * ...   <group><i>42</i><f>1.5</f></group>
+   * ... ).get
+   * 43.5
+   * }}}
+   * 
+   * Unfortunately, the types of intParser and floatParser are lost during the
+   * XML conversion, so there would be no way to type check the call to map.
+   * 
+   * Here's an alternative, slightly less convenient syntax which nevertheless
+   * preserves the clarity of the rigid block of XML, and for which type checking
+   * is possible:
+   * 
+   * {{{
+   * >>> val groupParser: Parser[Float] =
+   * ...   XmlTemplate(
+   * ...     <group><i><int/></i><f><float/></f></group>
+   * ...   ).parseAs(
+   * ...     "int", intParser
+   * ...   ).parseAs(
+   * ...     "float", floatParser
+   * ...   ) map {
+   * ...     case (f, (i, ())) => i + f
+   * ...   }
+   * >>> parseAll(
+   * ...   groupParser,
+   * ...   <group><i>42</i><f>1.5</f></group>
+   * ... ).get
+   * 43.5
+   * }}}
+   * 
+   * Implementation-wise, this API is a bit tricky to achieve, because:
+   * 
+   * 1. We can't compose the rigid parsers until we know which of them won't be
+   *    replaced by malleable parsers.
+   * 2. This in turn prevents us from composing the malleable parsers, because
+   *    there might be a rigid-until-further-notice leaf parser in between them.
+   * 3. The order in which the parser names appear in the XML might differ from
+   *    the order in which the parser names are replaced. We would like to return
+   *    the tuple of results in the latter order.
+   * 
+   * Here is my solution. Instead of keeping track of the parsers, I keep and
+   * manipulate a term representing the steps required to build the combined
+   * parser. To replace a rigid parser with a malleable parser, I find the step
+   * which adds the rigid parser and ignores is result, I replace it with the
+   * malleable parser, and I modify the later steps to thread the result along.
+   * To change the order of the final tuple, I simply add steps which reorder the
+   * results.
+   */
+  object XmlTemplate {
+    // In Haskell, Term and parseAs would look like this:
+    // 
+    // data Term a where
+    //   Nil :: Term ()
+    //   Map :: (b -> c) -> Term b -> Term c
+    //   LeafCons :: String -> Parser () -> Term c -> Term c
+    //   RigidCons :: Parser () -> Term c -> Term c
+    //   MalleableCons :: Parser b -> Term c -> Term (b, c)
+    // 
+    // parseAs :: String -> Parser a -> Term b -> Term (a, b)
+    // parseAs _   _      Nil                 = error "key not found"
+    // parseAs key parser (Map f t)           = Map (\(x, y) -> (x, f y))
+    //                                        $ parseAs key parser t
+    // parseAs key parser (LeafCons s p t)
+    //                            | s == key  = MalleableCons parser t
+    //                            | otherwise = LeafCons s p (parseAs key parser t)
+    // parseAs key parser (RigidCons p t)     = RigidCons s p (parseAs key parser t)
+    // parseAs key parser (MalleableCons p t) = Map (\(y, (x, z)) -> (x, (y, z)))
+    //                                        $ MalleableCons p (parseAs key parser t)
+
+    private[parser] sealed abstract trait Term[A] {
+      type Parser[T] = XmlParsers.Parser[T]
+      
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)]
+      
+      def parser: Parser[A]
+      
+      // convenience method for the common combination term.parser.map
+      def map[B](f: A => B): Parser[B] =
+        parser.map(f)
+    }
+
+    private[parser] case class NilTerm() extends Term[Unit] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,Unit)] =
+        throw new java.lang.RuntimeException(s"key ${key} not found")
+      
+      def parser: Parser[Unit] =
+        XmlParsers.success(())
+    }
+
+    private[parser] case class Map[A,B](
+      inner: Term[A]
+    )(
+      f: A => B
+    ) extends Term[B] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,B)] =
+        Map(inner.parseAs(key, parser)) {
+          case (t, b) => (t, f(b))
+        }
+      
+      def parser: Parser[B] =
+        inner.parser.map(f)
+    }
+
+    // A rigid-until-further-notice leaf parser, such as <leaf/>.
+    private[parser] case class LeafCons[A](
+      headKey: String,
+      headParser: XmlParsers.Parser[Unit],
+      tail: Term[A]
+    ) extends Term[A] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
+        if (headKey == key) MalleableCons(parser, tail)
+        else LeafCons(headKey, headParser, tail.parseAs(key, parser))
+      
+      def parser: Parser[A] =
+        headParser ~> tail.parser
+    }
+
+    // A definitely-rigid parser, such as <foo value="bar"/>.
+    private[parser] case class RigidCons[A](
+      headParser: XmlParsers.Parser[Unit],
+      tail: Term[A]
+    ) extends Term[A] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
+        RigidCons(headParser, tail.parseAs(key, parser))
+      
+      def parser: Parser[A] =
+        headParser ~> tail.parser
+    }
+
+    // A leaf which has been replaced by a malleable parser, such as <int/> after
+    // a parseAs("int", intParser).
+    private[parser] case class MalleableCons[A,B](
+      headParser: XmlParsers.Parser[A],
+      tail: Term[B]
+    ) extends Term[(A,B)] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[(T,(A,B))] =
+        Map(MalleableCons(headParser, tail.parseAs(key, parser))) {
+          case (a,(t,b)) => (t,(a,b))
+        }
+      
+      def parser: Parser[(A,B)] =
+        (headParser ~ tail.parser) map {
+          case XmlParsers.~(a, b) => (a, b)
+        }
+    }
+
+    def apply(nodeSeq: NodeSeq): Term[Unit] =
+      {
+        def go(tokens: List[XmlToken]): Term[Unit] =
+          tokens match {
+            case Nil => NilTerm()
+            case XmlOpen(elem)
+              :: XmlClose(elem2)
+              :: tail
+              if (elem eq elem2) && elem.attributes.isEmpty => {
+                val key: String = elem.label
+                val parser: XmlParsers.Parser[Unit] =
+                  XmlParsers.xmlElem(elem).map(_ => ())
+                LeafCons(key, parser, go(tail))
+              }
+            case XmlOpen(elem) :: tail =>
+              {
+                val parser: XmlParsers.Parser[Unit] =
+                  XmlParsers.open(elem).map(_ => ())
+                RigidCons(parser, go(tail))
+              }
+            case XmlClose(elem) :: tail =>
+              {
+                val parser: XmlParsers.Parser[Unit] =
+                  XmlParsers.accept(s"</${elem.label}>", {
+                    case XmlClose(e) if e.label == elem.label => ()
+                  })
+                RigidCons(parser, go(tail))
+              }
+            case token :: tail =>
+              {
+                val parser: XmlParsers.Parser[Unit] =
+                  XmlParsers.elem(token).map(_ => ())
+                RigidCons(parser, go(tail))
+              }
+          }
+        
+        go(new XmlTokenReader(nodeSeq).toList)
+      }
+  }
 }
 
 object XmlParsers extends XmlParsers
-
-/**
- * Now for the complicated part.
- * 
- * Scala has a built-in syntax for describing a rigid block of XML surrounding
- * more malleable pieces of data:
- * 
- * {{{
- * >>> import XmlParsers._
- * >>> val myInt = 42
- * >>> val myFloat = 1.5
- * >>> <group><i>{myInt}</i><f>{myFloat}</f></group>
- * <group><i>42</i><f>1.5</f></group>
- * }}}
- * 
- * I wish I could use that same syntax for describing a parser expecting that
- * same rigid block of XML, surrounding more malleable pieces described by
- * sub-parsers.
- * 
- * {{{
- * >>> val intParser: Parser[Int] = text.map(_.toInt)
- * ... val floatParser: Parser[Float] = text.map(_.toFloat)
- * 
- * ... val groupParser: Parser[Float] =
- * ...   XmlTemplate(
- * ...     <group><i>{intParser}</i><f>{floatParser}</f></group>
- * ...   ) map {
- * ...     case (i, f) => i + f
- * ...   }
- * ... parseAll(
- * ...   groupParser,
- * ...   <group><i>42</i><f>1.5</f></group>
- * ... ).get
- * 43.5
- * }}}
- * 
- * Unfortunately, the types of intParser and floatParser are lost during the
- * XML conversion, so there would be no way to type check the call to map.
- * 
- * Here's an alternative, slightly less convenient syntax which nevertheless
- * preserves the clarity of the rigid block of XML, and for which type checking
- * is possible:
- * 
- * {{{
- * >>> val groupParser: Parser[Float] =
- * ...   XmlTemplate(
- * ...     <group><i><int/></i><f><float/></f></group>
- * ...   ).parseAs(
- * ...     "int", intParser
- * ...   ).parseAs(
- * ...     "float", floatParser
- * ...   ) map {
- * ...     case (f, (i, ())) => i + f
- * ...   }
- * >>> parseAll(
- * ...   groupParser,
- * ...   <group><i>42</i><f>1.5</f></group>
- * ... ).get
- * 43.5
- * }}}
- * 
- * Implementation-wise, this API is a bit tricky to achieve, because:
- * 
- * 1. We can't compose the rigid parsers until we know which of them won't be
- *    replaced by malleable parsers.
- * 2. This in turn prevents us from composing the malleable parsers, because
- *    there might be a rigid-until-further-notice leaf parser in between them.
- * 3. The order in which the parser names appear in the XML might differ from
- *    the order in which the parser names are replaced. We would like to return
- *    the tuple of results in the latter order.
- * 
- * Here is my solution. Instead of keeping track of the parsers, I keep and
- * manipulate a term representing the steps required to build the combined
- * parser. To replace a rigid parser with a malleable parser, I find the step
- * which adds the rigid parser and ignores is result, I replace it with the
- * malleable parser, and I modify the later steps to thread the result along.
- * To change the order of the final tuple, I simply add steps which reorder the
- * results.
- */
-object XmlTemplate {
-  // In Haskell, Term and parseAs would look like this:
-  // 
-  // data Term a where
-  //   Nil :: Term ()
-  //   Map :: (b -> c) -> Term b -> Term c
-  //   LeafCons :: String -> Parser () -> Term c -> Term c
-  //   RigidCons :: Parser () -> Term c -> Term c
-  //   MalleableCons :: Parser b -> Term c -> Term (b, c)
-  // 
-  // parseAs :: String -> Parser a -> Term b -> Term (a, b)
-  // parseAs _   _      Nil                 = error "key not found"
-  // parseAs key parser (Map f t)           = Map (\(x, y) -> (x, f y))
-  //                                        $ parseAs key parser t
-  // parseAs key parser (LeafCons s p t)
-  //                            | s == key  = MalleableCons parser t
-  //                            | otherwise = LeafCons s p (parseAs key parser t)
-  // parseAs key parser (RigidCons p t)     = RigidCons s p (parseAs key parser t)
-  // parseAs key parser (MalleableCons p t) = Map (\(y, (x, z)) -> (x, (y, z)))
-  //                                        $ MalleableCons p (parseAs key parser t)
-
-  private[parser] sealed abstract trait Term[A] {
-    type Parser[T] = XmlParsers.Parser[T]
-    
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)]
-    
-    def parser: Parser[A]
-    
-    // convenience method for the common combination term.parser.map
-    def map[B](f: A => B): Parser[B] =
-      parser.map(f)
-  }
-
-  private[parser] case class NilTerm() extends Term[Unit] {
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,Unit)] =
-      throw new java.lang.RuntimeException(s"key ${key} not found")
-    
-    def parser: Parser[Unit] =
-      XmlParsers.success(())
-  }
-
-  private[parser] case class Map[A,B](
-    inner: Term[A]
-  )(
-    f: A => B
-  ) extends Term[B] {
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,B)] =
-      Map(inner.parseAs(key, parser)) {
-        case (t, b) => (t, f(b))
-      }
-    
-    def parser: Parser[B] =
-      inner.parser.map(f)
-  }
-
-  // A rigid-until-further-notice leaf parser, such as <leaf/>.
-  private[parser] case class LeafCons[A](
-    headKey: String,
-    headParser: XmlParsers.Parser[Unit],
-    tail: Term[A]
-  ) extends Term[A] {
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
-      if (headKey == key) MalleableCons(parser, tail)
-      else LeafCons(headKey, headParser, tail.parseAs(key, parser))
-    
-    def parser: Parser[A] =
-      headParser ~> tail.parser
-  }
-
-  // A definitely-rigid parser, such as <foo value="bar"/>.
-  private[parser] case class RigidCons[A](
-    headParser: XmlParsers.Parser[Unit],
-    tail: Term[A]
-  ) extends Term[A] {
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
-      RigidCons(headParser, tail.parseAs(key, parser))
-    
-    def parser: Parser[A] =
-      headParser ~> tail.parser
-  }
-
-  // A leaf which has been replaced by a malleable parser, such as <int/> after
-  // a parseAs("int", intParser).
-  private[parser] case class MalleableCons[A,B](
-    headParser: XmlParsers.Parser[A],
-    tail: Term[B]
-  ) extends Term[(A,B)] {
-    def parseAs[T](key: String, parser: Parser[T]): Term[(T,(A,B))] =
-      Map(MalleableCons(headParser, tail.parseAs(key, parser))) {
-        case (a,(t,b)) => (t,(a,b))
-      }
-    
-    def parser: Parser[(A,B)] =
-      (headParser ~ tail.parser) map {
-        case XmlParsers.~(a, b) => (a, b)
-      }
-  }
-
-  def apply(nodeSeq: NodeSeq): Term[Unit] =
-    {
-      def go(tokens: List[XmlToken]): Term[Unit] =
-        tokens match {
-          case Nil => NilTerm()
-          case XmlOpen(elem)
-            :: XmlClose(elem2)
-            :: tail
-            if (elem eq elem2) && elem.attributes.isEmpty => {
-              val key: String = elem.label
-              val parser: XmlParsers.Parser[Unit] =
-                XmlParsers.xmlElem(elem).map(_ => ())
-              LeafCons(key, parser, go(tail))
-            }
-          case XmlOpen(elem) :: tail =>
-            {
-              val parser: XmlParsers.Parser[Unit] =
-                XmlParsers.open(elem).map(_ => ())
-              RigidCons(parser, go(tail))
-            }
-          case XmlClose(elem) :: tail =>
-            {
-              val parser: XmlParsers.Parser[Unit] =
-                XmlParsers.accept(s"</${elem.label}>", {
-                  case XmlClose(e) if e.label == elem.label => ()
-                })
-              RigidCons(parser, go(tail))
-            }
-          case token :: tail =>
-            {
-              val parser: XmlParsers.Parser[Unit] =
-                XmlParsers.elem(token).map(_ => ())
-              RigidCons(parser, go(tail))
-            }
-        }
-      
-      go(new XmlTokenReader(nodeSeq).toList)
-    }
-}
