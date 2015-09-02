@@ -1,4 +1,4 @@
-package com.gelisam.xml.parser
+package com.gelisam.parser.xml
 
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._

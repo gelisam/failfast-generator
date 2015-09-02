@@ -1,6 +1,6 @@
 package com.gelisam.failfast.generator
 
-import com.gelisam.xml.parser._
+import com.gelisam.parser.xml._
 
 import treehugger.forest._, definitions._, treehuggerDSL._
 import treehugger.forest._
