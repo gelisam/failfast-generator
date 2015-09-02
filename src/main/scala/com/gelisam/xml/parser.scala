@@ -226,7 +226,7 @@ trait XmlParsers extends Parsers {
    * A helper for the variants of xmlElem, parent and parentFlatMap which
    * accept any parent node.
    */
-  private def open: Parser[XmlElem] =
+  private[parser] def open: Parser[XmlElem] =
     accept("opening tag", {
       case XmlOpen(elem) => elem
     })
@@ -235,7 +235,7 @@ trait XmlParsers extends Parsers {
    * A helper for the variants of xmlElem, parent and parentFlatMap which
    * require a parent node with a particular tag.
    */
-  private def open(tag: String): Parser[XmlElem] =
+  private[parser] def open(tag: String): Parser[XmlElem] =
     open ^? (
       {
         case elem if elem.label == tag => elem
@@ -249,7 +249,7 @@ trait XmlParsers extends Parsers {
    * A helper for the variants of xmlElem, parent and parentFlatMap which
    * require a parent node with a particular tag and particular attributes.
    */
-  private def open(expected: XmlElem): Parser[XmlElem] =
+  private[parser] def open(expected: XmlElem): Parser[XmlElem] =
     {
       val expectedKeys = (expected.attributes map (_.key)).toSet
       expectedKeys.foldLeft(open(expected.label))((parser, key) =>
@@ -276,7 +276,7 @@ trait XmlParsers extends Parsers {
   /**
    * A helper for xmlElem, which accepts any children.
    */
-  private def untilClose(openElem: XmlElem): Parser[XmlElem] =
+  private[parser] def untilClose(openElem: XmlElem): Parser[XmlElem] =
     {
       lazy val parseUntilCloseTag: Parser[XmlElem] =
         token flatMap {
@@ -289,7 +289,7 @@ trait XmlParsers extends Parsers {
   /**
    * A helper for parent, which requires children to satisfy a particular parser.
    */
-  private def untilClose[A](openElem: XmlElem, parser: Parser[A]): Parser[A] =
+  private[parser] def untilClose[A](openElem: XmlElem, parser: Parser[A]): Parser[A] =
     parser <~ accept("closing tag", {
       case XmlClose(elem) if elem eq openElem => elem
     })
@@ -298,7 +298,7 @@ trait XmlParsers extends Parsers {
    * A helper for parentFlatMap, which decides how to parse children using
    * monadic composition.
    */
-  private def untilClose[A](openElem: XmlElem, f: XmlElem => Parser[A]): Parser[A] =
+  private[parser] def untilClose[A](openElem: XmlElem, f: XmlElem => Parser[A]): Parser[A] =
     untilClose(openElem, f(openElem))
   
   /**
@@ -612,7 +612,7 @@ object XmlParsers extends XmlParsers
 // parseAs key parser (MalleableCons p t) = Map (\(y, (x, z)) -> (x, (y, z)))
 //                                        $ MalleableCons p (parseAs key parser t)
 
-protected sealed abstract trait Term[A] {
+private[parser] sealed abstract trait Term[A] {
   type Parser[T] = XmlParsers.Parser[T]
   
   def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)]
@@ -624,7 +624,7 @@ protected sealed abstract trait Term[A] {
     parser.map(f)
 }
 
-protected case class NilTerm() extends Term[Unit] {
+private[parser] case class NilTerm() extends Term[Unit] {
   def parseAs[T](key: String, parser: Parser[T]): Term[(T,Unit)] =
     throw new java.lang.RuntimeException(s"key ${key} not found")
   
@@ -632,7 +632,7 @@ protected case class NilTerm() extends Term[Unit] {
     XmlParsers.success(())
 }
 
-protected case class Map[A,B](
+private[parser] case class Map[A,B](
   inner: Term[A]
 )(
   f: A => B
@@ -647,7 +647,7 @@ protected case class Map[A,B](
 }
 
 // A rigid-until-further-notice leaf parser, such as <leaf/>.
-protected case class LeafCons[A](
+private[parser] case class LeafCons[A](
   headKey: String,
   headParser: XmlParsers.Parser[Unit],
   tail: Term[A]
@@ -660,7 +660,7 @@ protected case class LeafCons[A](
 }
 
 // A definitely-rigid parser, such as <foo value="bar"/>.
-protected case class RigidCons[A](
+private[parser] case class RigidCons[A](
   headParser: XmlParsers.Parser[Unit],
   tail: Term[A]
 ) extends Term[A] {
@@ -672,7 +672,7 @@ protected case class RigidCons[A](
 
 // A leaf which has been replaced by a malleable parser, such as <int/> after
 // a parseAs("int", intParser).
-protected case class MalleableCons[A,B](
+private[parser] case class MalleableCons[A,B](
   head: XmlParsers.Parser[A],
   tail: Term[B]
 ) extends Term[(A,B)] {
