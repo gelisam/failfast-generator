@@ -362,23 +362,23 @@ trait XmlParsers extends Parsers {
    * {{{
    * >>> import XmlParsers._
    * >>> parseAll(
-   * ...   xmlElem(<foo attr="matters"/>),
-   * ...   <foo attr="matters"/>
+   * ...   xmlElem(<foo attr="value"/>),
+   * ...   <foo attr="value"/>
    * ... ).get
-   * <foo attr="matters"/>
+   * <foo attr="value"/>
    * }}}
    * 
    * >>> parseAll(
-   * ...   xmlElem(<foo attr="matters"/>),
+   * ...   xmlElem(<foo attr="value"/>),
    * ...   <foo/>
    * ... )
-   * [<undefined position>] failure: expected attribute attr="matters"
+   * [<undefined position>] failure: expected attribute attr="value"
    * <BLANKLINE>
    * <undefined position>
    * 
    * >>> parseAll(
    * ...   xmlElem(<foo/>),
-   * ...   <foo attr="matters"/><foo/>
+   * ...   <foo attr="value"/><foo/>
    * ... )
    * [<undefined position>] failure: unexpected attribute attr
    * <BLANKLINE>
