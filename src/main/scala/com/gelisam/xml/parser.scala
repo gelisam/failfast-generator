@@ -511,7 +511,6 @@ trait XmlParsers extends Parsers {
 
 object XmlParsers extends XmlParsers
 
-
 /**
  * Now for the complicated part.
  * 
@@ -522,7 +521,7 @@ object XmlParsers extends XmlParsers
  * >>> import XmlParsers._
  * >>> val myInt = 42
  * >>> val myFloat = 1.5
- * >>> val g = <group><i>{myInt}</i><f>{myFloat}</f></group>
+ * >>> <group><i>{myInt}</i><f>{myFloat}</f></group>
  * <group><i>42</i><f>1.5</f></group>
  * }}}
  * 
@@ -531,7 +530,6 @@ object XmlParsers extends XmlParsers
  * sub-parsers.
  * 
  * {{{
- * >>> import XmlParsers._
  * >>> val intParser: Parser[Int] = text.map(_.toInt)
  * ... val floatParser: Parser[Float] = text.map(_.toFloat)
  * 
@@ -566,7 +564,7 @@ object XmlParsers extends XmlParsers
  * ...   ) map {
  * ...     case (f, (i, ())) => i + f
  * ...   }
- * ... parseAll(
+ * >>> parseAll(
  * ...   groupParser,
  * ...   <group><i>42</i><f>1.5</f></group>
  * ... ).get
@@ -656,7 +654,8 @@ private[parser] case class LeafCons[A](
     if (headKey == key) MalleableCons(parser, tail)
     else LeafCons(headKey, headParser, tail.parseAs(key, parser))
   
-  def parser: Parser[A] = ???
+  def parser: Parser[A] =
+    headParser ~> tail.parser
 }
 
 // A definitely-rigid parser, such as <foo value="bar"/>.
@@ -667,23 +666,64 @@ private[parser] case class RigidCons[A](
   def parseAs[T](key: String, parser: Parser[T]): Term[(T,A)] =
     RigidCons(headParser, tail.parseAs(key, parser))
   
-  def parser: Parser[A] = ???
+  def parser: Parser[A] =
+    headParser ~> tail.parser
 }
 
 // A leaf which has been replaced by a malleable parser, such as <int/> after
 // a parseAs("int", intParser).
 private[parser] case class MalleableCons[A,B](
-  head: XmlParsers.Parser[A],
+  headParser: XmlParsers.Parser[A],
   tail: Term[B]
 ) extends Term[(A,B)] {
   def parseAs[T](key: String, parser: Parser[T]): Term[(T,(A,B))] =
-    Map(MalleableCons(head, tail.parseAs(key, parser))) {
+    Map(MalleableCons(headParser, tail.parseAs(key, parser))) {
       case (a,(t,b)) => (t,(a,b))
     }
   
-  def parser: Parser[(A,B)] = ???
+  def parser: Parser[(A,B)] =
+    (headParser ~ tail.parser) map {
+      case XmlParsers.~(a, b) => (a, b)
+    }
 }
 
 object XmlTemplate {
-  def apply(nodeSeq: NodeSeq): Term[Unit] = ???
+  def apply(nodeSeq: NodeSeq): Term[Unit] =
+    {
+      def go(tokens: List[XmlToken]): Term[Unit] =
+        tokens match {
+          case Nil => NilTerm()
+          case XmlOpen(elem)
+            :: XmlClose(elem2)
+            :: tail
+            if (elem eq elem2) && elem.attributes.isEmpty => {
+              val key: String = elem.label
+              val parser: XmlParsers.Parser[Unit] =
+                XmlParsers.xmlElem(elem).map(_ => ())
+              LeafCons(key, parser, go(tail))
+            }
+          case XmlOpen(elem) :: tail =>
+            {
+              val parser: XmlParsers.Parser[Unit] =
+                XmlParsers.open(elem).map(_ => ())
+              RigidCons(parser, go(tail))
+            }
+          case XmlClose(elem) :: tail =>
+            {
+              val parser: XmlParsers.Parser[Unit] =
+                XmlParsers.accept(s"</${elem.label}>", {
+                  case XmlClose(e) if e.label == elem.label => ()
+                })
+              RigidCons(parser, go(tail))
+            }
+          case token :: tail =>
+            {
+              val parser: XmlParsers.Parser[Unit] =
+                XmlParsers.elem(token).map(_ => ())
+              RigidCons(parser, go(tail))
+            }
+        }
+      
+      go(new XmlTokenReader(nodeSeq).toList)
+    }
 }
