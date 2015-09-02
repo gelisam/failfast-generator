@@ -40,7 +40,7 @@ case class XmlClose(elem: Elem) extends XmlToken
  * Convert a NodeSeq into a stream of XmlTokens.
  * 
  * {{{
- * >>> new XmlTokenReader(<group><foo attr="value"/> and <bar/></group>)
+ * >>> XmlTokenReader(<group><foo attr="value"/> and <bar/></group>)
  * XmlTokenReader(XmlOpen(<group><foo attr="value"/> and <bar/></group>),XmlOpen(<foo attr="value"/>),XmlClose(<foo attr="value"/>),XmlNode( and ),XmlOpen(<bar/>),XmlClose(<bar/>),XmlClose(<group><foo attr="value"/> and <bar/></group>))
  * }}}
  */
@@ -90,6 +90,11 @@ class XmlTokenReader(
     s"XmlTokenReader(${toList mkString ","})"
 }
 
+object XmlTokenReader {
+  def apply(nodeSeq: NodeSeq): XmlTokenReader =
+    new XmlTokenReader(nodeSeq)
+}
+
 /**
  * Parse XML using Scala's parser combinators.
  * 
@@ -124,7 +129,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parsePrefix[A](parser: Parser[A], nodeSeq: NodeSeq): ParseResult[A] =
-    parser(new XmlTokenReader(nodeSeq))
+    parser(XmlTokenReader(nodeSeq))
   
   /**
    * Succeeds if the parser matches the entire input.
@@ -147,7 +152,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def parseAll[A](parser: Parser[A], nodeSeq: NodeSeq): ParseResult[A] =
-    phrase(parser)(new XmlTokenReader(nodeSeq))
+    phrase(parser)(XmlTokenReader(nodeSeq))
   
   /**
    * The next token, if there is one.
@@ -506,7 +511,7 @@ trait XmlParsers extends Parsers {
    * }}}
    */
   def nodeSeq(nodeSeq: NodeSeq): Parser[NodeSeq] =
-    new XmlTokenReader(nodeSeq).toList.map(elem(_)).foldLeft(success(nodeSeq))(_ <~ _)
+    XmlTokenReader(nodeSeq).toList.map(elem(_)).foldLeft(success(nodeSeq))(_ <~ _)
   
   /**
    * Now for the complicated part.
@@ -720,7 +725,7 @@ trait XmlParsers extends Parsers {
               }
           }
         
-        go(new XmlTokenReader(nodeSeq).toList)
+        go(XmlTokenReader(nodeSeq).toList)
       }
   }
 }
