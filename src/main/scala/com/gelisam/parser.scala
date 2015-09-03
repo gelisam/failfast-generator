@@ -36,7 +36,7 @@ trait ReaderUtil[A] extends Reader[A] {
     else first :: rest.toList
   
   def className: String =
-    getClass.getName.split("\\.").last
+    getClass.getName.split('.').last
   
   // simplify debugging by listing all the remaining elements
   override def toString: String =
