@@ -116,7 +116,7 @@ object XmlTokenReader {
    * true
    * }}}
    */
-  def apply(nodeSeq: NodeSeq, ignoreIndentation: Boolean = true): ReaderUtil[XmlToken] =
+  def apply(nodeSeq: NodeSeq, ignoreIndentation: Boolean = true): XmlTokenReader =
     {
       def unindentedLine(s: String): String =
         s.replaceAll("""^\s+(?m)""","")
