@@ -1,5 +1,7 @@
 package com.gelisam.parser.xml
 
+import com.gelisam.parser._
+
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
 import scala.xml._
@@ -48,7 +50,7 @@ class XmlTokenReader(
   nodeSeq: NodeSeq,
   index: Int = 0,
   cc: Option[(Elem, XmlTokenReader)] = None
-) extends Reader[XmlToken] {
+) extends ReaderUtil[XmlToken] {
   def atEnd: Boolean =
     index == nodeSeq.length &&
     cc == None
@@ -80,14 +82,6 @@ class XmlTokenReader(
       case (None, Some((_, cc))) => cc
       case (None, None) => throw new IllegalStateException("no more tokens")
     }
-  
-  def toList: List[XmlToken] =
-    if (atEnd) Nil
-    else first :: rest.toList
-  
-  // simplify debugging by listing all the remaining XmlTokens
-  override def toString: String =
-    s"XmlTokenReader(${toList mkString ","})"
 }
 
 object XmlTokenReader {
