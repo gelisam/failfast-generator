@@ -85,8 +85,95 @@ class XmlTokenReader(
 }
 
 object XmlTokenReader {
-  def apply(nodeSeq: NodeSeq): XmlTokenReader =
-    new XmlTokenReader(nodeSeq)
+  /**
+   * For convenience, we strip off the indentation by default.
+   * 
+   * {{{
+   * >>> val xml1 = <group>
+   * ...              <foo attr="value"/>
+   * ...              and
+   * ...              also
+   * ...              <bar/>
+   * ...            </group>
+   * >>> val xml2 =
+   * ...   <group>
+   * ...     <foo attr="value"/>
+   * ...     and
+   * ...     also
+   * ...     <bar/>
+   * ...   </group>
+   * 
+   * >>> XmlTokenReader(xml1, false).toList == XmlTokenReader(xml2, false).toList
+   * false
+   * 
+   * >>> XmlTokenReader(xml1).toList == XmlTokenReader(xml1).toList
+   * true
+   * }}}
+   */
+  def apply(nodeSeq: NodeSeq, ignoreIndentation: Boolean = true): ReaderUtil[XmlToken] =
+    {
+      def unindentedLine(s: String): String =
+        s.replaceAll("""^\s+(?m)""","")
+      
+      def unindentedString(s: String): String =
+        if (s.startsWith("\n"))
+          {
+            // Something like this:
+            // 
+            //   <tag/>
+            //   and
+            //   ...
+            // 
+            // The first newline will be followed by one or more indented lines.
+            
+            val lines = s.split("\n")
+            lines.tail.map(unindentedLine(_)).mkString("\n")
+          }
+        else
+          {
+            // Something like "<tag/> and ...", we don't want to lose that first
+            // space. If this is a paragraph of text, there might be newlines
+            // after that, so we want to trim the indentation at the beginning
+            // of the other lines.
+            
+            val lines = s.split("\n")
+            val firstLine = lines.head
+            val otherLines = lines.tail.map(unindentedLine(_))
+            if (otherLines.isEmpty)
+              firstLine  // avoid introducing a spurious newline
+            else
+              firstLine + "\n" + otherLines.mkString("\n")
+          }
+      
+      def unindentedNode(node: Node): Node =
+        node match {
+          case Text(s) =>
+            Text(unindentedString(s))
+          case elem: Elem =>
+            Elem.apply(
+              elem.prefix,
+              elem.label,
+              elem.attributes,
+              elem.scope,
+              elem.minimizeEmpty,
+              unindentedNodeSeq(NodeSeq.fromSeq(elem.child)):_*
+            )
+          case token => token
+        }
+      
+      def unindentedNodeSeq(nodeSeq: NodeSeq): NodeSeq =
+        nodeSeq map {
+          unindentedNode(_)
+        } filter {
+          case Text(s) if s.trim.isEmpty => false
+          case _ => true
+        }
+      
+      new XmlTokenReader(
+        if (ignoreIndentation) unindentedNodeSeq(nodeSeq)
+        else nodeSeq
+      )
+    }
 }
 
 /**
