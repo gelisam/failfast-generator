@@ -23,12 +23,12 @@ import scala.xml.{Elem => XmlElem}
  * ...   XmlOpen(both),
  * ...     XmlOpen(foo),
  * ...     XmlClose(foo),
- * ...     XmlNode(new scala.xml.Text(" and ")),
+ * ...     XmlNode(new scala.xml.Text("and")),
  * ...     XmlOpen(bar),
  * ...     XmlClose(bar),
  * ...   XmlClose(both)
  * ... )
- * List(XmlOpen(<group><foo attr="value"/> and <bar/></group>), XmlOpen(<foo attr="value"/>), XmlClose(<foo attr="value"/>), XmlNode( and ), XmlOpen(<bar/>), XmlClose(<bar/>), XmlClose(<group><foo attr="value"/> and <bar/></group>))
+ * List(XmlOpen(<group><foo attr="value"/> and <bar/></group>), XmlOpen(<foo attr="value"/>), XmlClose(<foo attr="value"/>), XmlNode(and), XmlOpen(<bar/>), XmlClose(<bar/>), XmlClose(<group><foo attr="value"/> and <bar/></group>))
  * }}}
  */
 sealed trait XmlToken
@@ -41,7 +41,7 @@ case class XmlClose(elem: Elem) extends XmlToken
  * 
  * {{{
  * >>> XmlTokenReader(<group><foo attr="value"/> and <bar/></group>)
- * XmlTokenReader(XmlOpen(<group><foo attr="value"/> and <bar/></group>),XmlOpen(<foo attr="value"/>),XmlClose(<foo attr="value"/>),XmlNode( and ),XmlOpen(<bar/>),XmlClose(<bar/>),XmlClose(<group><foo attr="value"/> and <bar/></group>))
+ * XmlTokenReader(XmlOpen(<group><foo attr="value"/>and<bar/></group>),XmlOpen(<foo attr="value"/>),XmlClose(<foo attr="value"/>),XmlNode(and),XmlOpen(<bar/>),XmlClose(<bar/>),XmlClose(<group><foo attr="value"/>and<bar/></group>))
  * }}}
  */
 class XmlTokenReader(
@@ -118,38 +118,8 @@ object XmlTokenReader {
    */
   def apply(nodeSeq: NodeSeq, ignoreIndentation: Boolean = true): XmlTokenReader =
     {
-      def unindentedLine(s: String): String =
-        s.replaceAll("""^\s+(?m)""","")
-      
       def unindentedString(s: String): String =
-        if (s.startsWith("\n"))
-          {
-            // Something like this:
-            // 
-            //   <tag/>
-            //   and
-            //   ...
-            // 
-            // The first newline will be followed by one or more indented lines.
-            
-            val lines = s.split("\n")
-            lines.tail.map(unindentedLine(_)).mkString("\n")
-          }
-        else
-          {
-            // Something like "<tag/> and ...", we don't want to lose that first
-            // space. If this is a paragraph of text, there might be newlines
-            // after that, so we want to trim the indentation at the beginning
-            // of the other lines.
-            
-            val lines = s.split("\n")
-            val firstLine = lines.head
-            val otherLines = lines.tail.map(unindentedLine(_))
-            if (otherLines.isEmpty)
-              firstLine  // avoid introducing a spurious newline
-            else
-              firstLine + "\n" + otherLines.mkString("\n")
-          }
+        s.trim.split("\n").map(_.trim).mkString("\n")
       
       def unindentedNode(node: Node): Node =
         node match {
@@ -166,7 +136,7 @@ object XmlTokenReader {
         nodeSeq map {
           unindentedNode(_)
         } filter {
-          case Text(s) if s.trim.isEmpty => false
+          case Text(s) if s.isEmpty => false
           case _ => true
         }
       
