@@ -156,13 +156,8 @@ object XmlTokenReader {
           case Text(s) =>
             Text(unindentedString(s))
           case elem: Elem =>
-            Elem.apply(
-              elem.prefix,
-              elem.label,
-              elem.attributes,
-              elem.scope,
-              elem.minimizeEmpty,
-              unindentedNodeSeq(NodeSeq.fromSeq(elem.child)):_*
+            elem.copy(
+              child = unindentedNodeSeq(NodeSeq.fromSeq(elem.child))
             )
           case token => token
         }
