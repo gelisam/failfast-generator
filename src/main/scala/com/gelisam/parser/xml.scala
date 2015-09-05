@@ -644,26 +644,6 @@ trait XmlParsers extends Parsers {
    * results.
    */
   object XmlTemplate {
-    // In Haskell, Term and parseAs would look like this:
-    // 
-    // data Term a where
-    //   Nil :: Term ()
-    //   Map :: (b -> c) -> Term b -> Term c
-    //   LeafCons :: String -> Parser () -> Term c -> Term c
-    //   RigidCons :: Parser () -> Term c -> Term c
-    //   MalleableCons :: Parser b -> Term c -> Term (b, c)
-    // 
-    // parseAs :: String -> Parser a -> Term b -> Term (a, b)
-    // parseAs _   _      Nil                 = error "key not found"
-    // parseAs key parser (Map f t)           = Map (\(x, y) -> (x, f y))
-    //                                        $ parseAs key parser t
-    // parseAs key parser (LeafCons s p t)
-    //                            | s == key  = MalleableCons parser t
-    //                            | otherwise = LeafCons s p (parseAs key parser t)
-    // parseAs key parser (RigidCons p t)     = RigidCons s p (parseAs key parser t)
-    // parseAs key parser (MalleableCons p t) = Map (\(y, (x, z)) -> (x, (y, z)))
-    //                                        $ MalleableCons p (parseAs key parser t)
-
     private[parser] sealed abstract trait Term[A] {
       type Parser[T] = XmlParsers.Parser[T]
       
