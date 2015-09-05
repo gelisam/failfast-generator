@@ -40,14 +40,6 @@ object ScaladocParser extends XmlParsers {
   /**
    * Parse an XML type into a Type.
    * So far, we only support the type Unit.
-   * 
-   * {{{
-   * >>> ScaladocParser.parseAll(
-   * ...   ScaladocParser.typeParser,
-   * ...   (ScaladocParser.signatureNode \\ "a")(0)
-   * ... ).get
-   * Type(Unit)
-   * }}}
    */
   def typeParser: Parser[Type] =
     XmlTemplate(
@@ -58,7 +50,11 @@ object ScaladocParser extends XmlParsers {
       case () => Type("Unit")
     }
   
-  def parameterParser: Parser[(String, Type)] =
+  /**
+   * Parse an XML parameter into a Parameter.
+   * So far, we only support one very specific case: (f: (A) => Unit).
+   */
+  def parameterParser: Parser[Parameter] =
     XmlTemplate(
       <span name="f">
         f: (
