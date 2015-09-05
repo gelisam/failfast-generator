@@ -10,6 +10,9 @@ import treehuggerDSL._
 import scala.xml._
 import scala.xml.{Elem => XmlElem}
 
+case class Type(name: String)
+case class MethodSig(name: String, parameters: List[(String, Type)], returnType: Type)
+
 /**
  * Parses an html file into a list of method signatures.
  */
@@ -35,17 +38,17 @@ object ScaladocParser extends XmlParsers {
   val signatureNode = (foreachNode \ "h4").filter(_ \@ "class" == "signature")
   
   /**
-   * Parse a signature into its components.
+   * Parse an XML method signature into a MethodSig.
    * 
    * {{{
    * >>> ScaladocParser.parseAll(
    * ...   ScaladocParser.signatureParser,
    * ...   ScaladocParser.signatureNode
    * ... ).get
-   * foreach
+   * MethodSig(foreach,List(),Type(Unit))
    * }}}
    */
-  def signatureParser: Parser[String] =
+  def signatureParser: Parser[MethodSig] =
     XmlTemplate(
       <h4 class="signature">
         <span class="modifier_kind">
@@ -78,7 +81,7 @@ object ScaladocParser extends XmlParsers {
       "FUNCTION_NAME",
       text
     ).map {
-      case () ~ function_name => function_name
+      case () ~ function_name => MethodSig(function_name, List(), Type("Unit"))
     }
   
   /**
