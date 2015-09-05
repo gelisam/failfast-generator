@@ -38,6 +38,27 @@ object ScaladocParser extends XmlParsers {
   val signatureNode = (foreachNode \ "h4").filter(_ \@ "class" == "signature")
   
   /**
+   * Parse an XML type into a Type.
+   * So far, we only support the type Unit.
+   * 
+   * {{{
+   * >>> ScaladocParser.parseAll(
+   * ...   ScaladocParser.typeParser,
+   * ...   (ScaladocParser.signatureNode \\ "a")(0)
+   * ... ).get
+   * Type(Unit)
+   * }}}
+   */
+  def typeParser: Parser[Type] =
+    XmlTemplate(
+      <a name="scala.Unit" class="extype" href="../../Unit.html">
+        Unit
+      </a> 
+    ).map {
+      case () => Type("Unit")
+    }
+  
+  /**
    * Parse an XML method signature into a MethodSig.
    * 
    * {{{
@@ -71,17 +92,18 @@ object ScaladocParser extends XmlParsers {
           </span>
           <span class="result">
             :
-            <a name="scala.Unit" class="extype" href="../../Unit.html">
-              Unit
-            </a>
+            <TYPE/>
           </span>
         </span>
       </h4>
     ).parseAs(
       "FUNCTION_NAME",
       text
-    ).map {
-      case () ~ function_name => MethodSig(function_name, List(), Type("Unit"))
+    ).parseAs(
+      "TYPE",
+      typeParser
+    ).map { case () ~ function_name ~ return_type =>
+      MethodSig(function_name, List(), return_type)
     }
   
   /**
