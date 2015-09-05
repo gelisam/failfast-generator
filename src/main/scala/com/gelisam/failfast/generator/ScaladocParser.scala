@@ -35,24 +35,46 @@ object ScaladocParser extends XmlParsers {
   val signatureNode = (foreachNode \ "h4").filter(_ \@ "class" == "signature")
   
   /**
-   * The keyword "def", with or without modifiers.
+   * Parse a signature into its components.
    * 
    * {{{
    * >>> ScaladocParser.parseAll(
-   * ...   ScaladocParser.defKeyword,
-   * ...   <span class="modifier_kind">
-   * ...     <span class="modifier"/>
-   * ...     <span class="kind">def</span>
-   * ...   </span>
+   * ...   ScaladocParser.signatureParser,
+   * ...   ScaladocParser.signatureNode
    * ... ).get
    * ()
    * }}}
    */
-  def defKeyword: Parser[Unit] =
-    xmlElem("span").filter(elem =>
-      elem \@ "class" == "modifier_kind" &&
-      (elem \ "span").filter(_ \@ "class" == "kind").text == "def"
-    ).map(_ => ())
+  def signatureParser: Parser[Unit] =
+    XmlTemplate(
+      <h4 class="signature">
+        <span class="modifier_kind">
+          <span class="modifier"/>
+          <span class="kind">def</span>
+        </span>
+        <span class="symbol">
+          <span class="name">foreach</span>
+          <span class="params">
+            (
+              <span name="f">
+                f: (
+                  <span name="scala.collection.IterableLike.A" class="extype">A</span>
+                ) ⇒
+                <a name="scala.Unit" class="extype" href="../../Unit.html">
+                  Unit
+                </a>
+              </span>
+            )
+          </span>
+          <span class="result">
+            :
+            <a name="scala.Unit" class="extype" href="../../Unit.html">
+              Unit
+            </a>
+          </span>
+        </span>
+      </h4>
+    ).parser
   
   /**
    * Parse an XML name into a treehugger Ident.
