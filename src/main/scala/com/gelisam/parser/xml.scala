@@ -645,8 +645,6 @@ trait XmlParsers extends Parsers {
    */
   object XmlTemplate {
     private[parser] sealed abstract trait Term[A] {
-      type Parser[T] = XmlParsers.Parser[T]
-      
       def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]]
       
       def parser: Parser[A]
@@ -661,7 +659,7 @@ trait XmlParsers extends Parsers {
         throw new java.lang.RuntimeException(s"key ${key} not found")
       
       def parser: Parser[Unit] =
-        XmlParsers.success(())
+        success(())
     }
 
     private[parser] case class Map[A,B](
@@ -681,7 +679,7 @@ trait XmlParsers extends Parsers {
     // A rigid-until-further-notice leaf parser, such as <leaf/>.
     private[parser] case class LeafCons[A](
       headKey: String,
-      headParser: XmlParsers.Parser[Unit],
+      headParser: Parser[Unit],
       tail: Term[A]
     ) extends Term[A] {
       def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]] =
@@ -698,7 +696,7 @@ trait XmlParsers extends Parsers {
 
     // A definitely-rigid parser, such as <foo value="bar"/>.
     private[parser] case class RigidCons[A](
-      headParser: XmlParsers.Parser[Unit],
+      headParser: Parser[Unit],
       tail: Term[A]
     ) extends Term[A] {
       def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]] =
@@ -711,7 +709,7 @@ trait XmlParsers extends Parsers {
     // A leaf which has been replaced by a malleable parser, such as <int/> after
     // a parseAs("int", intParser).
     private[parser] case class MalleableCons[A,B](
-      headParser: XmlParsers.Parser[A],
+      headParser: Parser[A],
       tail: Term[B]
     ) extends Term[~[A,B]] {
       def parseAs[T](key: String, parser: Parser[T]): Term[~[~[A,B],T]] =
@@ -720,9 +718,7 @@ trait XmlParsers extends Parsers {
         }
       
       def parser: Parser[~[A,B]] =
-        (headParser ~ tail.parser) map {
-          case XmlParsers.~(a, b) => new ~(a, b)
-        }
+        headParser ~ tail.parser
     }
 
     def apply(nodeSeq: NodeSeq): Term[Unit] =
@@ -735,28 +731,28 @@ trait XmlParsers extends Parsers {
               :: tail
               if (elem eq elem2) && elem.attributes.isEmpty => {
                 val key: String = elem.label
-                val parser: XmlParsers.Parser[Unit] =
-                  XmlParsers.xmlElem(elem).map(_ => ())
+                val parser: Parser[Unit] =
+                  xmlElem(elem).map(_ => ())
                 LeafCons(key, parser, go(tail))
               }
             case XmlOpen(elem) :: tail =>
               {
-                val parser: XmlParsers.Parser[Unit] =
-                  XmlParsers.open(elem).map(_ => ())
+                val parser: Parser[Unit] =
+                  open(elem).map(_ => ())
                 RigidCons(parser, go(tail))
               }
             case XmlClose(elem) :: tail =>
               {
-                val parser: XmlParsers.Parser[Unit] =
-                  XmlParsers.accept(s"</${elem.label}>", {
+                val parser: Parser[Unit] =
+                  accept(s"</${elem.label}>", {
                     case XmlClose(e) if e.label == elem.label => ()
                   })
                 RigidCons(parser, go(tail))
               }
             case token :: tail =>
               {
-                val parser: XmlParsers.Parser[Unit] =
-                  XmlParsers.elem(token).map(_ => ())
+                val parser: Parser[Unit] =
+                  elem(token).map(_ => ())
                 RigidCons(parser, go(tail))
               }
           }
