@@ -58,6 +58,20 @@ object ScaladocParser extends XmlParsers {
       case () => Type("Unit")
     }
   
+  def parameterParser: Parser[(String, Type)] =
+    XmlTemplate(
+      <span name="f">
+        f: (
+          <span name="scala.collection.IterableLike.A" class="extype">A</span>
+        ) ⇒
+        <a name="scala.Unit" class="extype" href="../../Unit.html">
+          Unit
+        </a>
+      </span>
+    ).map { case () =>
+      ("f", Type("(A) => Unit"))
+    }
+  
   /**
    * Parse an XML method signature into a MethodSig.
    * 
@@ -66,7 +80,7 @@ object ScaladocParser extends XmlParsers {
    * ...   ScaladocParser.signatureParser,
    * ...   ScaladocParser.signatureNode
    * ... ).get
-   * MethodSig(foreach,List(),Type(Unit))
+   * MethodSig(foreach,List((f,Type((A) => Unit))),Type(Unit))
    * }}}
    */
   def signatureParser: Parser[MethodSig] =
@@ -80,14 +94,7 @@ object ScaladocParser extends XmlParsers {
           <span class="name"><FUNCTION_NAME/></span>
           <span class="params">
             (
-              <span name="f">
-                f: (
-                  <span name="scala.collection.IterableLike.A" class="extype">A</span>
-                ) ⇒
-                <a name="scala.Unit" class="extype" href="../../Unit.html">
-                  Unit
-                </a>
-              </span>
+              <PARAMETER/>
             )
           </span>
           <span class="result">
@@ -100,10 +107,13 @@ object ScaladocParser extends XmlParsers {
       "FUNCTION_NAME",
       text
     ).parseAs(
+      "PARAMETER",
+      parameterParser
+    ).parseAs(
       "TYPE",
       typeParser
-    ).map { case () ~ function_name ~ return_type =>
-      MethodSig(function_name, List(), return_type)
+    ).map { case () ~ function_name ~ parameter ~ return_type =>
+      MethodSig(function_name, List(parameter), return_type)
     }
   
   /**
