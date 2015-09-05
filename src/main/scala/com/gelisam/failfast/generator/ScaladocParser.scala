@@ -42,10 +42,10 @@ object ScaladocParser extends XmlParsers {
    * ...   ScaladocParser.signatureParser,
    * ...   ScaladocParser.signatureNode
    * ... ).get
-   * ()
+   * foreach
    * }}}
    */
-  def signatureParser: Parser[Unit] =
+  def signatureParser: Parser[String] =
     XmlTemplate(
       <h4 class="signature">
         <span class="modifier_kind">
@@ -53,7 +53,7 @@ object ScaladocParser extends XmlParsers {
           <span class="kind">def</span>
         </span>
         <span class="symbol">
-          <span class="name">foreach</span>
+          <span class="name"><FUNCTION_NAME/></span>
           <span class="params">
             (
               <span name="f">
@@ -74,7 +74,12 @@ object ScaladocParser extends XmlParsers {
           </span>
         </span>
       </h4>
-    ).parser
+    ).parseAs(
+      "FUNCTION_NAME",
+      text
+    ).map {
+      case () ~ function_name => function_name
+    }
   
   /**
    * Parse an XML name into a treehugger Ident.
