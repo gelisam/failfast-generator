@@ -616,7 +616,7 @@ trait XmlParsers extends Parsers {
    * ...   ).parseAs(
    * ...     "float", floatParser
    * ...   ) map {
-   * ...     case (((), i), f) => i + f
+   * ...     case () ~ i ~ f => i + f
    * ...   }
    * >>> parseAll(
    * ...   groupParser,
@@ -667,7 +667,7 @@ trait XmlParsers extends Parsers {
     private[parser] sealed abstract trait Term[A] {
       type Parser[T] = XmlParsers.Parser[T]
       
-      def parseAs[T](key: String, parser: Parser[T]): Term[(A,T)]
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]]
       
       def parser: Parser[A]
       
@@ -677,7 +677,7 @@ trait XmlParsers extends Parsers {
     }
 
     private[parser] case class NilTerm() extends Term[Unit] {
-      def parseAs[T](key: String, parser: Parser[T]): Term[(Unit,T)] =
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[Unit,T]] =
         throw new java.lang.RuntimeException(s"key ${key} not found")
       
       def parser: Parser[Unit] =
@@ -689,9 +689,9 @@ trait XmlParsers extends Parsers {
     )(
       f: A => B
     ) extends Term[B] {
-      def parseAs[T](key: String, parser: Parser[T]): Term[(B,T)] =
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[B,T]] =
         Map(inner.parseAs(key, parser)) {
-          case (b, t) => (f(b), t)
+          case b ~ t => new ~(f(b), t)
         }
       
       def parser: Parser[B] =
@@ -704,10 +704,10 @@ trait XmlParsers extends Parsers {
       headParser: XmlParsers.Parser[Unit],
       tail: Term[A]
     ) extends Term[A] {
-      def parseAs[T](key: String, parser: Parser[T]): Term[(A,T)] =
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]] =
         if (headKey == key)
           Map(MalleableCons(parser, tail)) {
-            case (t,a) => (a,t)
+            case t ~ a => new ~(a, t)
           }
         else
           LeafCons(headKey, headParser, tail.parseAs(key, parser))
@@ -721,7 +721,7 @@ trait XmlParsers extends Parsers {
       headParser: XmlParsers.Parser[Unit],
       tail: Term[A]
     ) extends Term[A] {
-      def parseAs[T](key: String, parser: Parser[T]): Term[(A,T)] =
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[A,T]] =
         RigidCons(headParser, tail.parseAs(key, parser))
       
       def parser: Parser[A] =
@@ -733,15 +733,15 @@ trait XmlParsers extends Parsers {
     private[parser] case class MalleableCons[A,B](
       headParser: XmlParsers.Parser[A],
       tail: Term[B]
-    ) extends Term[(A,B)] {
-      def parseAs[T](key: String, parser: Parser[T]): Term[((A,B),T)] =
+    ) extends Term[~[A,B]] {
+      def parseAs[T](key: String, parser: Parser[T]): Term[~[~[A,B],T]] =
         Map(MalleableCons(headParser, tail.parseAs(key, parser))) {
-          case (a,(b,t)) => ((a,b),t)
+          case a ~ (b ~ t) => new ~(new ~(a, b), t)
         }
       
-      def parser: Parser[(A,B)] =
+      def parser: Parser[~[A,B]] =
         (headParser ~ tail.parser) map {
-          case XmlParsers.~(a, b) => (a, b)
+          case XmlParsers.~(a, b) => new ~(a, b)
         }
     }
 
