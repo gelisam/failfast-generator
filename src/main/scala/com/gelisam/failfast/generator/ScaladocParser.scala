@@ -112,8 +112,8 @@ object ScaladocParser extends XmlParsers {
     ).parseAs(
       "TYPE",
       typeParser
-    ).map { case () ~ function_name ~ parameter ~ return_type =>
-      MethodSig(function_name, List(parameter), return_type)
+    ).map { case () ~ functionName ~ parameter ~ returnType =>
+      MethodSig(functionName, List(parameter), returnType)
     }
   
   /**
