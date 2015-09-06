@@ -10,8 +10,20 @@ import treehuggerDSL._
 import scala.xml._
 import scala.xml.{Elem => XmlElem}
 
-case class Type(name: String)
-case class MethodSig(name: String, parameters: List[(String, Type)], returnType: Type)
+case class Type(name: String) {
+  override def toString: String =
+    name
+}
+
+case class Parameter(name: String, parameterType: Type) {
+  override def toString: String =
+    s"${name}: ${parameterType}"
+}
+
+case class MethodSig(name: String, parameters: List[Parameter], returnType: Type) {
+  override def toString: String =
+    s"def ${name}(${parameters.mkString(", ")}): ${returnType}"
+}
 
 /**
  * Parses an html file into a list of method signatures.
@@ -65,7 +77,7 @@ object ScaladocParser extends XmlParsers {
         </a>
       </span>
     ).map { case () =>
-      ("f", Type("(A) => Unit"))
+      Parameter("f", Type("(A) => Unit"))
     }
   
   /**
@@ -76,7 +88,7 @@ object ScaladocParser extends XmlParsers {
    * ...   ScaladocParser.signatureParser,
    * ...   ScaladocParser.signatureNode
    * ... ).get
-   * MethodSig(foreach,List((f,Type((A) => Unit))),Type(Unit))
+   * def foreach(f: (A) => Unit): Unit
    * }}}
    */
   def signatureParser: Parser[MethodSig] =
