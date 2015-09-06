@@ -25,6 +25,7 @@ case class MethodSig(name: String, parameters: List[Parameter], returnType: Type
  */
 object ScaladocParser extends XmlParsers {
   val root = XML.loadFile("www.scala-lang.org/api/2.11.7/scala/collection/mutable/HashSet.html")
+  val clearNode = (root \\ "li").filter(_ \@ "name" == "scala.collection.mutable.HashSet#clear").\("h4")(0)
   val foreachNode = (root \\ "li").filter(_ \@ "name" == "scala.collection.mutable.HashSet#foreach").\("h4")(0)
   
   /**
@@ -59,9 +60,23 @@ object ScaladocParser extends XmlParsers {
     }
   
   /**
+   * Parse an XML parameter list into a List[Parameter].
+   * So far, we only support two very specific case: () and (f: (A) => Unit).
+   */
+  def parametersParser: Parser[List[Parameter]] =
+    (text("(") ~> parameterParser <~ text(")")).map(List(_)) |
+    text("()").map(_ => List())
+  
+  /**
    * Parse an XML method signature into a MethodSig.
    * 
    * {{{
+   * >>> ScaladocParser.parseAll(
+   * ...   ScaladocParser.signatureParser,
+   * ...   ScaladocParser.clearNode
+   * ... ).get
+   * def clear(): Unit
+   * 
    * >>> ScaladocParser.parseAll(
    * ...   ScaladocParser.signatureParser,
    * ...   ScaladocParser.foreachNode
@@ -79,9 +94,7 @@ object ScaladocParser extends XmlParsers {
         <span class="symbol">
           <span class="name"><FUNCTION_NAME/></span>
           <span class="params">
-            (
-              <PARAMETER/>
-            )
+            <PARAMETERS/>
           </span>
           <span class="result">
             :
@@ -93,12 +106,12 @@ object ScaladocParser extends XmlParsers {
       "FUNCTION_NAME",
       text
     ).parseAs(
-      "PARAMETER",
-      parameterParser
+      "PARAMETERS",
+      parametersParser
     ).parseAs(
       "TYPE",
       typeParser
-    ).map { case () ~ functionName ~ parameter ~ returnType =>
-      MethodSig(functionName, List(parameter), returnType)
+    ).map { case () ~ functionName ~ parameters ~ returnType =>
+      MethodSig(functionName, parameters, returnType)
     }
 }
