@@ -29,17 +29,16 @@ object ScaladocParser extends XmlParsers {
   val foreachNode = (root \\ "li").filter(_ \@ "name" == "scala.collection.mutable.HashSet#foreach").\("h4")(0)
   
   /**
+   * Parse an XML identifier into a String.
+   */
+  def identifierParser: Parser[String] =
+    xmlElem("a").map(_.text)
+  
+  /**
    * Parse an XML type into a Type.
-   * So far, we only support the type Unit.
    */
   def typeParser: Parser[Type] =
-    XmlTemplate(
-      <a name="scala.Unit" class="extype" href="../../Unit.html">
-        Unit
-      </a> 
-    ).map {
-      case () => Type("Unit")
-    }
+    identifierParser.map(Type(_))
   
   /**
    * Parse an XML parameter into a Parameter.
