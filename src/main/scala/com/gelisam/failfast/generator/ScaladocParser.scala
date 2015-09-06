@@ -2,11 +2,6 @@ package com.gelisam.failfast.generator
 
 import com.gelisam.parser.xml._
 
-import treehugger.forest._, definitions._, treehuggerDSL._
-import treehugger.forest._
-import definitions._
-import treehuggerDSL._
-
 import scala.xml._
 import scala.xml.{Elem => XmlElem}
 
@@ -123,18 +118,4 @@ object ScaladocParser extends XmlParsers {
     ).map { case () ~ functionName ~ parameter ~ returnType =>
       MethodSig(functionName, List(parameter), returnType)
     }
-  
-  /**
-   * Parse an XML name into a treehugger Ident.
-   * 
-   * {{{
-   * >>> ScaladocParser.parseAll(
-   * ...   ScaladocParser.ident,
-   * ...   <span class="name">foreach</span>
-   * ... ).get
-   * Ident(foreach)
-   * }}}
-   */
-  def ident: Parser[Ident] =
-    xmlElem("span").filter(_ \@ "class" == "name").map(x => Ident(x.text))
 }
